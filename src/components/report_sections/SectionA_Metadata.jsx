@@ -51,7 +51,6 @@ export default function SectionA_Metadata() {
         setMacoms(Object.keys(data));
         const def = data["CENTCOM"] || [];
         setCountries(def.slice().sort((a, b) => a.localeCompare(b)));
-        if (def.length) setCountry(def[0]);
       });
   }, []);
   useEffect(() => {
@@ -60,7 +59,7 @@ export default function SectionA_Metadata() {
       .then((data) => {
         const list = (data[macom] || []).slice().sort((a, b) => a.localeCompare(b));
         setCountries(list);
-        if (!list.includes(country)) setCountry(list[0] || "");
+        setCountry("");
       });
   }, [macom]);
 
@@ -70,8 +69,9 @@ export default function SectionA_Metadata() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
+      let db; // 1. Declare db here
       try {
-        const db = await openCountryDb(country);
+        db = await openCountryDb(country); // 2. Assign to it
         const stmt = db.prepare(`
           SELECT l.location as location, l.mgrs as mgrs, p.province as province
           FROM Locations l
@@ -82,10 +82,19 @@ export default function SectionA_Metadata() {
         const rows = [];
         stmt.bind([location]);
         while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free(); db.close();
+        stmt.free();
+        // db.close(); // 3. Remove from here
         setResults(rows);
-      } catch { setResults([]); }
-      finally { setLoading(false); }
+      } catch (err) {
+        console.error("Database error:", err); // It's good practice to log errors
+        setResults([]);
+      }
+      finally {
+        if (db) {
+          db.close(); // 4. Close it here, ensuring it always runs
+        }
+        setLoading(false);
+      }
     }, 800);
     return () => clearTimeout(debounceRef.current);
   }, [country, location]);
@@ -129,6 +138,7 @@ export default function SectionA_Metadata() {
           </select>
           <label className="block text-xs mt-2">Country</label>
           <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
+            <option value="" disabled>SELECT COUNTRY</option>
             {countries.map(c => <option key={c}>{c}</option>)}
           </select>
           <label className="block text-xs mt-2">Location</label>
