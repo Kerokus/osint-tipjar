@@ -76,7 +76,7 @@ export default function SectionA_Metadata() {
           SELECT l.location as location, l.mgrs as mgrs, p.province as province
           FROM Locations l
           JOIN Provinces p ON l.province_id = p.id
-          WHERE lower(' ' || l.location || ' ') LIKE '% ' || lower(?) || ' %'
+          WHERE lower(l.location) LIKE '%' || lower(?) || '%'
           ORDER BY l.location ASC;
         `);
         const rows = [];
@@ -115,14 +115,14 @@ export default function SectionA_Metadata() {
           <button className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600">Recall Last</button>
         </div>
         {/* Image uploader spans 2 rows */}
-        <div className="col-span-12 md:col-span-4 md:row-span-2 flex flex-col">
+        <div className="col-span-12 md:col-span-4 md:row-span-2 flex flex-col h-full">
           <label className="block text-xs">Image</label>
-          <div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} className="h-[282px] rounded-md border border-slate-600 bg-slate-900 grid place-items-center text-sm">
+          <div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} className="flex-1 min-h-[152px] rounded-md border border-slate-600 bg-slate-900 grid place-items-center text-sm">
             {imgFile ? <div>{imgFile.name}</div> : <label className="cursor-pointer">Upload Image<input type="file" onChange={onChoose} className="hidden" /></label>}
           </div>
         </div>
         {/* Row 2 left stack */}
-        <div className="col-span-12 md:col-span-4 md:row-start-2 flex flex-col">
+        <div className="col-span-12 md:col-span-4 md:row-start-2 flex flex-col h-full">
           <label className="block text-xs">MACOM</label>
           <select value={macom} onChange={(e) => setMacom(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
             {macoms.map(m => <option key={m}>{m}</option>)}
@@ -137,9 +137,9 @@ export default function SectionA_Metadata() {
           <input value={mgrs} onChange={(e) => setMgrs(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
         </div>
         {/* Row 2 MGRS results */}
-        <div className="col-span-12 md:col-span-4 md:row-start-2 flex flex-col">
+        <div className="col-span-12 md:col-span-4 md:row-start-2 flex flex-col h-full">
           <label className="block text-xs text-center">MGRS Results</label>
-          <div className="h-[220px] overflow-auto rounded-md border border-slate-700 bg-slate-900">
+          <div className="flex-1 min-h-[152px] overflow-auto rounded-md border border-slate-700 bg-slate-900">
             {loading ? <div>Searching…</div> : results.length === 0 ? <div>No results</div> : (
               <ul>
                 {results.map((r, idx) => (
