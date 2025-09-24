@@ -36,7 +36,6 @@ function App() {
     return <Login onSuccess={() => window.dispatchEvent(new Event("auth-changed"))} />;
   }
 
-  //These are the tabs inside the sidebar.
   const tabs = [
     { key: "newReport", label: "Create Report" },
     { key: "sources", label: "Sources" },
@@ -112,14 +111,13 @@ function App() {
             className="ml-2 p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {/* chevron icons without xmlns */}
             {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             )}
           </button>
@@ -143,10 +141,10 @@ function App() {
             aria-label="Logout"
             title="Logout"
           >
-            {/* power icon without xmlns */}
             {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v9m6.364-6.364A9 9 0 106.343 17.657" />
+              // Power icon
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v9m6.364-6.364A9 9 0 106.343 17.657" />
               </svg>
             ) : (
               "Logout"
@@ -171,8 +169,8 @@ function App() {
                 className="p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 aria-label="Close sidebar"
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -206,8 +204,8 @@ function App() {
               className="md:hidden p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
               aria-label="Open sidebar"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             <span className="text-sm text-slate-400">TIPJar</span>

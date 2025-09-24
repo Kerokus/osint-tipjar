@@ -36,7 +36,6 @@ function App() {
     return <Login onSuccess={() => window.dispatchEvent(new Event("auth-changed"))} />;
   }
 
-  //These are the tabs inside the sidebar.
   const tabs = [
     { key: "newReport", label: "Create Report" },
     { key: "sources", label: "Sources" },
@@ -58,30 +57,22 @@ function App() {
       <ul className="space-y-1">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
-          const base =
-            "w-full rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-400";
-          const expanded =
-            "flex items-center gap-2 px-3 py-2 text-left " +
-            (isActive ? "bg-slate-800 text-blue-300" : "text-slate-300 hover:bg-slate-800 hover:text-blue-200");
-          const compact =
-            "grid place-items-center h-10 w-10 mx-auto " +
-            (isActive ? "bg-slate-800 text-blue-300" : "text-slate-300 hover:bg-slate-800 hover:text-blue-200");
           return (
-            <li key={tab.key} className={collapsed ? "px-0" : ""}>
+            <li key={tab.key}>
               <button
                 onClick={() => {
                   setActiveTab(tab.key);
                   if (onNavigate) onNavigate();
                 }}
-                className={`${base} ${collapsed ? compact : expanded}`}
+                className={`w-full text-left px-3 py-2 rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-400
+                  ${isActive ? "bg-slate-800 text-blue-300" : "text-slate-300 hover:bg-slate-800 hover:text-blue-200"}
+                `}
                 aria-current={isActive ? "page" : undefined}
-                aria-label={collapsed ? tab.label : undefined}
                 title={collapsed ? tab.label : undefined}
               >
-                {collapsed ? (
-                  <span className="font-semibold">{tab.label.charAt(0)}</span>
-                ) : (
-                  <span>{tab.label}</span>
+                <span className={`${collapsed ? "sr-only" : "inline"}`}>{tab.label}</span>
+                {collapsed && (
+                  <span aria-hidden className="block text-center">{tab.label.charAt(0)}</span>
                 )}
               </button>
             </li>
@@ -95,62 +86,57 @@ function App() {
     <div className="min-h-screen bg-slate-800 text-slate-200 flex">
       {/* Sidebar for md+ */}
       <aside
-        className={`hidden md:flex md:flex-col bg-slate-900 border-r border-slate-700 transition-[width] duration-200 ease-in-out overflow-hidden
+        className={`hidden md:flex md:flex-col bg-slate-900 border-r border-slate-700 transition-[width] duration-200 ease-in-out
           ${collapsed ? "w-16" : "w-64"}
         `}
       >
-        <div className="h-14 flex items-center justify-between px-2 border-b border-slate-700">
-          <div className="flex items-center w-full">
+        <div className="h-14 flex items-center justify-between px-3 border-b border-slate-700">
+          {!collapsed && (
             <img
               src="/src/assets/tipjar-logo-cropped.png"
               alt="TIPJar"
-              className={`${collapsed ? "h-8 w-8 mx-auto" : "h-12 w-auto"} object-contain`}
+              className="h-8 w-auto object-contain"
             />
-          </div>
+          )}
+          {collapsed && (
+            <img
+              src="/src/assets/tipjar-logo-cropped.png"
+              alt="TIPJar"
+              className="h-8 w-8 object-contain"
+            />
+          )}
           <button
             onClick={() => setCollapsed((c) => !c)}
             className="ml-2 p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {/* chevron icons without xmlns */}
             {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             )}
           </button>
         </div>
 
-        <div className={`flex-1 overflow-y-auto ${collapsed ? "px-1 py-2" : "px-2 py-2"}`}>
+        <div className="flex-1 overflow-y-auto px-2 py-2">
           <SidebarNav />
         </div>
 
-        <div className="mt-auto px-2 py-3 border-t border-slate-700">
+        <div className="mt-auto px-3 py-3 border-t border-slate-700">
           {!collapsed && (
-            <div className="text-xs text-slate-400 mb-2 truncate">
+            <div className="text-xs text-slate-400 mb-2">
               Logged in as: {localStorage.getItem("cin")}
             </div>
           )}
           <button
             onClick={logout}
-            className={`${collapsed
-              ? "grid place-items-center h-10 w-10 mx-auto rounded-md bg-slate-800 hover:bg-slate-700"
-              : "w-full text-left px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700"} transition text-slate-200`}
-            aria-label="Logout"
-            title="Logout"
+            className="w-full text-left px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 transition text-slate-200"
           >
-            {/* power icon without xmlns */}
-            {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v9m6.364-6.364A9 9 0 106.343 17.657" />
-              </svg>
-            ) : (
-              "Logout"
-            )}
+            Logout
           </button>
         </div>
       </aside>
@@ -171,8 +157,8 @@ function App() {
                 className="p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 aria-label="Close sidebar"
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -206,8 +192,8 @@ function App() {
               className="md:hidden p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
               aria-label="Open sidebar"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             <span className="text-sm text-slate-400">TIPJar</span>

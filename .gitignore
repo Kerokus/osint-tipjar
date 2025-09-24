@@ -17,6 +17,7 @@ certs
 dist
 dist-ssr
 *.local
+country_locations
 
 # Editor directories and files
 .vscode/*
