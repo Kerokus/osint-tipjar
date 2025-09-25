@@ -58,12 +58,6 @@ export default function CreateReport() {
   const [articleTitle, setArticleTitle] = useState("N/A");
   const [articleAuthor, setArticleAuthor] = useState("N/A");
 
-  // New state for Column 1 under the second blue line
-  const [reportBody, setReportBody] = useState("");
-  const [collectorClass, setCollectorClass] = useState("U");
-  const [sourceDescription, setSourceDescription] = useState("");
-  const [additionalComment, setAdditionalComment] = useState("");
-
   // Logic/effects that were previously in SectionA
   useEffect(() => {
     const now = new Date();
@@ -127,35 +121,14 @@ export default function CreateReport() {
   const onDrop = (e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) setImgFile(f); };
   const onChoose = (e) => { const f = e.target.files?.[0]; if (f) setImgFile(f); };
 
-  // The clearForm function now resets state for all sections
+  // The clearForm function now resets state for both sections
   const clearForm = () => {
     // Section A state reset
     setMacom("CENTCOM"); setCountry(""); setLocation(""); setMgrs(""); setResults([]); setImgFile(null);
     // Section B state reset
     setUsper(false); setUspi(false); setSourceType("Website"); setSourceName("");
     setDidWhat("reported"); setUid(""); setArticleTitle("N/A"); setArticleAuthor("N/A");
-    // Column 1 new state reset
-    setReportBody(""); setCollectorClass("U"); setSourceDescription(""); setAdditionalComment("");
   };
-
-  // Badge logic
-  const sourceBadge = (() => {
-    if (usper) {
-      return (
-        <div className="ml-3 inline-flex shrink-0 items-center justify-center h-7 px-3 rounded-md bg-red-600 text-black text-xs font-bold select-none">
-          SOURCE IS USPER
-        </div>
-      );
-    }
-    if (!sourceDescription.trim()) {
-      return (
-        <div className="ml-3 inline-flex shrink-0 items-center justify-center h-7 px-3 rounded-md bg-orange-500 text-black text-xs font-extrabold select-none">
-          COMMENT NOT FOUND
-        </div>
-      );
-    }
-    return null;
-  })();
 
   return (
     <div>
@@ -186,66 +159,8 @@ export default function CreateReport() {
         articleAuthor={articleAuthor} setArticleAuthor={setArticleAuthor}
       />
       <hr className="my-6 w-full border-sky-300" />
-
-      {/* === New two-column section begins here (Column 1 implemented, Column 2 reserved) === */}
-      <div className="grid grid-cols-12 gap-4">
-        {/* Column 1 */}
-        <div className="col-span-12 lg:col-span-6 space-y-3">
-          {/* Report Body */}
-          <div>
-            <label className="block text-xs">Report Body</label>
-            <textarea
-              value={reportBody}
-              onChange={(e) => setReportBody(e.target.value)}
-              className="w-full min-h-[130px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
-            />
-          </div>
-
-          {/* Collector Comment + Source Description container */}
-          <div className="rounded-md border border-slate-700 bg-slate-900 p-3">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <label className="block text-xs">Collector Comment</label>
-                <SectionHeader
-                  initialValue={collectorClass}
-                  onChange={(p) => setCollectorClass(p.value)}
-                />
-              </div>
-              
-            </div>
-
-            <div className="mt-2">
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-xs">Source Description:</label>
-                {sourceBadge}
-              </div>
-              <textarea
-                value={sourceDescription}
-                onChange={(e) => setSourceDescription(e.target.value)}
-                disabled={usper}
-                className={`w-full min-h-[120px] rounded-md border border-slate-700 px-3 py-2 ${usper ? "bg-slate-800 opacity-70 cursor-not-allowed" : "bg-slate-900"}`}
-              />
-            </div>
-          </div>
-
-          {/* Additional Comment Text */}
-          <div>
-            <label className="block text-xs">Additional Comment Text</label>
-            <textarea
-              value={additionalComment}
-              onChange={(e) => setAdditionalComment(e.target.value)}
-              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
-            />
-          </div>
-        </div>
-
-        {/* Column 2 placeholder for future content */}
-        <div className="col-span-12 lg:col-span-6">
-          {/* Intentionally left blank for now */}
-        </div>
-      </div>
-      {/* === End of new two-column section === */}
-
+      <SectionC />
+      <SectionD />
     </div>
   );
 }
