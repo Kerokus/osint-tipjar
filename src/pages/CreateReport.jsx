@@ -33,12 +33,11 @@ async function openCountryDb(country) {
 }
 
 export default function CreateReport() {
-  //Overall classification state
-  const [overallClass, setOverallClass] = useState("U");            // overall
-  const rank = { U: 0, CUI: 1, CUIREL: 2 };                         // U < CUI < CUI//REL TO USA, FVEY
-  const maxClass = (...vals) => vals.reduce((a,b)=> (rank[b] > rank[a] ? b : a), "U");
+  // Overall classification state
+  const [overallClass, setOverallClass] = useState("U");
+  const rank = { U: 0, CUI: 1, CUIREL: 2 }; // U < CUI < CUI//REL TO USA, FVEY
+  const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
 
-  
   // All state is now "lifted" to this parent component
   // State for Section A
   const [dateStr, setDateStr] = useState("");
@@ -70,11 +69,16 @@ export default function CreateReport() {
   const [sourceDescription, setSourceDescription] = useState("");
   const [additionalComment, setAdditionalComment] = useState("");
 
+  // New state for Column 2
+  const [chatChannel, setChatChannel] = useState("Placeholder 1");
+  const [chatOutput, setChatOutput] = useState("");
+  const [reportOutput, setReportOutput] = useState("");
+  const [citationOutput, setCitationOutput] = useState("");
+
   useEffect(() => {
-    setOverallClass(prev => maxClass(prev, collectorClass));
+    setOverallClass((prev) => maxClass(prev, collectorClass));
   }, [collectorClass]);
 
-  
   // Logic/effects that were previously in SectionA
   useEffect(() => {
     const now = new Date();
@@ -102,7 +106,10 @@ export default function CreateReport() {
 
   const debounceRef = useRef(null);
   useEffect(() => {
-    if (!country || !location) { setResults([]); return; }
+    if (!country || !location) {
+      setResults([]);
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -124,8 +131,7 @@ export default function CreateReport() {
       } catch (err) {
         console.error("Database error:", err);
         setResults([]);
-      }
-      finally {
+      } finally {
         if (db) {
           db.close();
         }
@@ -135,18 +141,54 @@ export default function CreateReport() {
     return () => clearTimeout(debounceRef.current);
   }, [country, location]);
 
-  const onDrop = (e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) setImgFile(f); };
-  const onChoose = (e) => { const f = e.target.files?.[0]; if (f) setImgFile(f); };
+  const onDrop = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (f) setImgFile(f);
+  };
+  const onChoose = (e) => {
+    const f = e.target.files?.[0];
+    if (f) setImgFile(f);
+  };
+
+  // Copy helper
+  const copy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text ?? "");
+    } catch (e) {
+      console.error("Copy failed:", e);
+    }
+  };
 
   // The clearForm function now resets state for all sections
   const clearForm = () => {
     // Section A state reset
-    setMacom("CENTCOM"); setCountry(""); setLocation(""); setMgrs(""); setResults([]); setImgFile(null);
+    setMacom("CENTCOM");
+    setCountry("");
+    setLocation("");
+    setMgrs("");
+    setResults([]);
+    setImgFile(null);
     // Section B state reset
-    setUsper(false); setUspi(false); setSourceType("Website"); setSourceName("");
-    setDidWhat("reported"); setUid(""); setArticleTitle("N/A"); setArticleAuthor("N/A");
+    setUsper(false);
+    setUspi(false);
+    setSourceType("Website");
+    setSourceName("");
+    setDidWhat("reported");
+    setUid("");
+    setArticleTitle("N/A");
+    setArticleAuthor("N/A");
     // Column 1 new state reset
-    setReportBody(""); setCollectorClass("U"); setSourceDescription(""); setAdditionalComment(""); setOverallClass("U");
+    setReportBody("");
+    setCollectorClass("U");
+    setSourceDescription("");
+    setAdditionalComment("");
+    setOverallClass("U");
+    // Column 2 new state reset
+    setChatChannel("Placeholder 1");
+    setChatOutput("");
+    setReportOutput("");
+    setCitationOutput("");
   };
 
   // Badge logic
@@ -176,32 +218,52 @@ export default function CreateReport() {
       />
       {/* Pass all necessary state and functions down to SectionA as props */}
       <SectionA
-        dateStr={dateStr} setDateStr={setDateStr}
-        timeStr={timeStr} setTimeStr={setTimeStr}
+        dateStr={dateStr}
+        setDateStr={setDateStr}
+        timeStr={timeStr}
+        setTimeStr={setTimeStr}
         cin={cin}
-        macoms={macoms} macom={macom} setMacom={setMacom}
-        countries={countries} country={country} setCountry={setCountry}
-        location={location} setLocation={setLocation}
-        mgrs={mgrs} setMgrs={setMgrs}
-        results={results} loading={loading}
-        imgFile={imgFile} setImgFile={setImgFile}
-        onDrop={onDrop} onChoose={onChoose} clearForm={clearForm}
+        macoms={macoms}
+        macom={macom}
+        setMacom={setMacom}
+        countries={countries}
+        country={country}
+        setCountry={setCountry}
+        location={location}
+        setLocation={setLocation}
+        mgrs={mgrs}
+        setMgrs={setMgrs}
+        results={results}
+        loading={loading}
+        imgFile={imgFile}
+        setImgFile={setImgFile}
+        onDrop={onDrop}
+        onChoose={onChoose}
+        clearForm={clearForm}
       />
       <hr className="my-6 w-full border-sky-300" />
       {/* Pass all necessary state and functions down to SectionB as props */}
       <SectionB
-        usper={usper} setUsper={setUsper}
-        uspi={uspi} setUspi={setUspi}
-        sourceType={sourceType} setSourceType={setSourceType}
-        sourceName={sourceName} setSourceName={setSourceName}
-        didWhat={didWhat} setDidWhat={setDidWhat}
-        uid={uid} setUid={setUid}
-        articleTitle={articleTitle} setArticleTitle={setArticleTitle}
-        articleAuthor={articleAuthor} setArticleAuthor={setArticleAuthor}
+        usper={usper}
+        setUsper={setUsper}
+        uspi={uspi}
+        setUspi={setUspi}
+        sourceType={sourceType}
+        setSourceType={setSourceType}
+        sourceName={sourceName}
+        setSourceName={setSourceName}
+        didWhat={didWhat}
+        setDidWhat={setDidWhat}
+        uid={uid}
+        setUid={setUid}
+        articleTitle={articleTitle}
+        setArticleTitle={setArticleTitle}
+        articleAuthor={articleAuthor}
+        setArticleAuthor={setArticleAuthor}
       />
       <hr className="my-6 w-full border-sky-300" />
 
-      {/* === New two-column section begins here (Column 1 implemented, Column 2 reserved) === */}
+      {/* === Two-column section === */}
       <div className="grid grid-cols-12 gap-4">
         {/* Column 1 */}
         <div className="col-span-12 lg:col-span-6 space-y-3">
@@ -222,10 +284,12 @@ export default function CreateReport() {
                 <label className="block text-xs">Collector Comment</label>
                 <SectionHeader
                   initialValue={collectorClass}
-                  onChange={(p) => { setCollectorClass(p.value); setOverallClass(prev => maxClass(prev, p.value)); }}
+                  onChange={(p) => {
+                    setCollectorClass(p.value);
+                    setOverallClass((prev) => maxClass(prev, p.value));
+                  }}
                 />
               </div>
-              
             </div>
 
             <div className="mt-2">
@@ -237,7 +301,11 @@ export default function CreateReport() {
                 value={sourceDescription}
                 onChange={(e) => setSourceDescription(e.target.value)}
                 disabled={usper}
-                className={`w-full min-h-[120px] rounded-md border border-slate-700 px-3 py-2 ${usper ? "bg-slate-800 opacity-70 cursor-not-allowed" : "bg-slate-900"}`}
+                className={`w-full min-h-[120px] rounded-md border border-slate-700 px-3 py-2 ${
+                  usper
+                    ? "bg-slate-800 opacity-70 cursor-not-allowed"
+                    : "bg-slate-900"
+                }`}
               />
             </div>
           </div>
@@ -253,13 +321,87 @@ export default function CreateReport() {
           </div>
         </div>
 
-        {/* Column 2 placeholder for future content */}
-        <div className="col-span-12 lg:col-span-6">
-          {/* Intentionally left blank for now */}
+        {/* Column 2 */}
+        <div className="col-span-12 lg:col-span-6 space-y-3">
+          {/* 1. ChatSurfer Channel */}
+          <div>
+            <label className="block text-xs">ChatSurfer Channel</label>
+            <select
+              value={chatChannel}
+              onChange={(e) => setChatChannel(e.target.value)}
+              className="w-full h-9 rounded-md bg-slate-900 border border-slate-700"
+            >
+              <option>Placeholder 1</option>
+              <option>Placeholder 2</option>
+            </select>
+          </div>
+
+          {/* 2. Chat Output */}
+          <div>
+            <label className="block text-xs">Chat Output</label>
+            <textarea
+              value={chatOutput}
+              onChange={(e) => setChatOutput(e.target.value)}
+              className="w-full min-h-[160px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className="flex-1 h-9 rounded-md bg-slate-800 border border-orange-600 text-orange-200"
+                onClick={() => {}}
+              >
+                Send to ChatSurfer
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
+                onClick={() => copy(chatOutput)}
+              >
+                Copy Chat Output
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Report Output */}
+          <div>
+            <label className="block text-xs">Report Output</label>
+            <textarea
+              value={reportOutput}
+              onChange={(e) => setReportOutput(e.target.value)}
+              className="w-full min-h-[140px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+            />
+            <div className="mt-2">
+              <button
+                type="button"
+                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
+                onClick={() => copy(reportOutput)}
+              >
+                Copy Report Output
+              </button>
+            </div>
+          </div>
+
+          {/* 4. Citation Output */}
+          <div>
+            <label className="block text-xs">Citation Output</label>
+            <textarea
+              value={citationOutput}
+              onChange={(e) => setCitationOutput(e.target.value)}
+              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+            />
+            <div className="mt-2">
+              <button
+                type="button"
+                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
+                onClick={() => copy(citationOutput)}
+              >
+                Copy Citation Output
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      {/* === End of new two-column section === */}
-
+      {/* === End of two-column section === */}
     </div>
   );
 }
