@@ -33,6 +33,12 @@ async function openCountryDb(country) {
 }
 
 export default function CreateReport() {
+  //Overall classification state
+  const [overallClass, setOverallClass] = useState("U");            // overall
+  const rank = { U: 0, CUI: 1, CUIREL: 2 };                         // U < CUI < CUI//REL TO USA, FVEY
+  const maxClass = (...vals) => vals.reduce((a,b)=> (rank[b] > rank[a] ? b : a), "U");
+
+  
   // All state is now "lifted" to this parent component
   // State for Section A
   const [dateStr, setDateStr] = useState("");
@@ -64,6 +70,11 @@ export default function CreateReport() {
   const [sourceDescription, setSourceDescription] = useState("");
   const [additionalComment, setAdditionalComment] = useState("");
 
+  useEffect(() => {
+    setOverallClass(prev => maxClass(prev, collectorClass));
+  }, [collectorClass]);
+
+  
   // Logic/effects that were previously in SectionA
   useEffect(() => {
     const now = new Date();
@@ -135,7 +146,7 @@ export default function CreateReport() {
     setUsper(false); setUspi(false); setSourceType("Website"); setSourceName("");
     setDidWhat("reported"); setUid(""); setArticleTitle("N/A"); setArticleAuthor("N/A");
     // Column 1 new state reset
-    setReportBody(""); setCollectorClass("U"); setSourceDescription(""); setAdditionalComment("");
+    setReportBody(""); setCollectorClass("U"); setSourceDescription(""); setAdditionalComment(""); setOverallClass("U");
   };
 
   // Badge logic
@@ -159,7 +170,10 @@ export default function CreateReport() {
 
   return (
     <div>
-      <SectionHeader />
+      <SectionHeader
+        initialValue={overallClass}
+        onChange={(p) => setOverallClass(maxClass(p.value, collectorClass))}
+      />
       {/* Pass all necessary state and functions down to SectionA as props */}
       <SectionA
         dateStr={dateStr} setDateStr={setDateStr}
@@ -208,7 +222,7 @@ export default function CreateReport() {
                 <label className="block text-xs">Collector Comment</label>
                 <SectionHeader
                   initialValue={collectorClass}
-                  onChange={(p) => setCollectorClass(p.value)}
+                  onChange={(p) => { setCollectorClass(p.value); setOverallClass(prev => maxClass(prev, p.value)); }}
                 />
               </div>
               

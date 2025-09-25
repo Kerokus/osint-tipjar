@@ -16,6 +16,8 @@ export default function SectionHeader({ initialValue = "U", onChange }) {
   const [classification, setClassification] = useState(initialValue);
   const firstBtnRef = useRef(null);
 
+  useEffect(() => { setClassification(initialValue); }, [initialValue]);
+
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement;
