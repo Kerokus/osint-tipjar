@@ -19,12 +19,17 @@ export default function SectionB_Source({
     }
   }, [usper, setUspi]);
 
+  // New handler function for the UID input
+  const handleUidChange = (e) => {
+    const sanitizedValue = e.target.value.replace(/http/gi, "hxxp");
+    setUid(sanitizedValue);
+  };
+
   const sourceOptions = ["Website", "X User", "Telegram User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
   const didWhatOptions = ["reported", "posted", "stated", "claimed", "published", "observed"];
 
   return (
     <section>
-      {/* This new div constrains the width of the grid */}
       <div className="max-w-5xl">
         <div className="grid grid-cols-12 gap-x-6 gap-y-2 items-center">
 
@@ -41,7 +46,8 @@ export default function SectionB_Source({
           </div>
           <div className="col-span-12 md:col-span-6">
             <label className="block text-xs">UID:</label>
-            <input value={uid} onChange={(e) => setUid(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
+            {/* The onChange prop now uses the new handler */}
+            <input value={uid} onChange={handleUidChange} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
           </div>
 
           {/* --- Row 2 --- */}
