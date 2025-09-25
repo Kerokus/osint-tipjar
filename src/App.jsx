@@ -99,35 +99,37 @@ function App() {
           ${collapsed ? "w-16" : "w-64"}
         `}
       >
-        <div className="h-14 flex items-center justify-between px-2 border-b border-slate-700">
-          <div className="flex items-center w-full">
-            <img
-              src="/src/assets/tipjar-logo-cropped.png"
-              alt="TIPJar"
-              className={`${collapsed ? "h-8 w-8 mx-auto" : "h-12 w-auto"} object-contain`}
-            />
+        <div className="h-40 flex flex-col justify-center border-b border-slate-700">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center w-full">
+              {/* 2. The logo image is larger */}
+              <img
+                src="/src/assets/tipjar-logo-cropped.png"
+                alt="TIPJar"
+                className={`${collapsed ? "h-10 w-10 mx-auto" : "h-16 w-auto"} object-contain transition-all duration-200`}
+              />
+            </div>
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              className="ml-2 p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+              ) : (
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+              )}
+            </button>
           </div>
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="ml-2 p-1 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {/* chevron icons without xmlns */}
-            {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-            )}
-          </button>
         </div>
 
-        <div className={`flex-1 overflow-y-auto ${collapsed ? "px-1 py-2" : "px-2 py-2"}`}>
+        {/* Navigation now sits below the taller logo area */}
+        <div className={`overflow-y-auto ${collapsed ? "px-1 py-2" : "px-2 py-2"}`}>
           <SidebarNav />
         </div>
+
+        {/* 3. This new spacer div pushes everything below it to the bottom */}
+        <div className="flex-1" />
 
         <div className="mt-auto px-2 py-3 border-t border-slate-700">
           {!collapsed && (
@@ -143,11 +145,8 @@ function App() {
             aria-label="Logout"
             title="Logout"
           >
-            {/* power icon without xmlns */}
             {collapsed ? (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v9m6.364-6.364A9 9 0 106.343 17.657" />
-              </svg>
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v9m6.364-6.364A9 9 0 106.343 17.657" /></svg>
             ) : (
               "Logout"
             )}

@@ -49,8 +49,8 @@ export default function SectionA_Metadata({
           <input value={cin} readOnly className="w-full h-9 rounded-md bg-slate-800 border border-slate-700 px-3" />
         </div>
         <div className="col-span-12 md:col-span-3 flex gap-2 items-end">
-          <button onClick={clearForm} className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600 text-red-500">Clear Form</button>
-          <button className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600">Recall Last</button>
+          <button onClick={clearForm} className="flex-1 h-9 rounded-md bg-slate-800 border border-red-500 text-red-500">Clear Form</button>
+          <button className="flex-1 h-9 rounded-md bg-slate-800 border border-blue-400 text-blue-400">Recall Last</button>
         </div>
         {/* Image uploader spans 2 rows */}
         <div className="col-span-12 md:col-span-4 md:row-span-2 flex flex-col min-w-0">
