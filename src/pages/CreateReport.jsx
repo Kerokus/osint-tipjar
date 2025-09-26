@@ -178,6 +178,12 @@ export default function CreateReport() {
     }
   };
 
+  //helper function for Citation Report
+  function cleanSourceType(t) {
+    if (!t) return "";
+    return t.replace(/\s*User$/i, "").trim();
+  }
+
   // The clearForm function now resets state for all sections
   const clearForm = () => {
     // Section A state reset
@@ -209,7 +215,7 @@ export default function CreateReport() {
     setCitationOutput("");
   };
 
-  // === New effect: auto-generate Chat Output from current form state ===
+  // === Auto-generate Chat Output from current form state ===
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -237,6 +243,45 @@ export default function CreateReport() {
     collectorClass,
     sourceDescription
   ]);
+  // Auto-generate Report Output from current form state ===
+  useEffect(() => {
+    const oc = classificationForOutput(overallClass);
+    const cc = classificationForOutput(collectorClass);
+    const dtg = makeDTG(dateStr, timeStr);
+    const srcType = sourceType || "";
+    const srcName = sourceName || "";
+    const action = didWhat || "";
+    const body = reportBody || "";
+    const mgrsDisp = mgrs || "";
+    const desc = sourceDescription || "";
+
+    const report = `(${oc}) On ${dtg}, ${srcType} ${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) ${desc}`;
+    setReportOutput(report.trim());
+  }, [
+    overallClass,
+    collectorClass,
+    dateStr,
+    timeStr,
+    sourceType,
+    sourceName,
+    reportBody,
+    mgrs,
+    sourceDescription
+  ]);
+
+  // Auto-generate Citation Output from current form state ===
+  useEffect(() => {
+  const oc = classificationForOutput(overallClass);
+  const dtg = makeDTG(dateStr, timeStr);
+  const srcType = cleanSourceType(sourceType || "");
+  const srcName = sourceName || "";
+  const uidDisp = uid || "";
+  const usPerson = (usper || uspi) ? "YES" : "NO";
+
+  const citation = `(${oc}) ${srcType} | ${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+  setCitationOutput(citation.trim());
+}, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi]);  
+
 
   // Badge logic
   const sourceBadge = (() => {
