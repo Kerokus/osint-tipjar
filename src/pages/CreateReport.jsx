@@ -1,5 +1,3 @@
-// src/pages/CreateReport.jsx
-
 import { useEffect, useRef, useState } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
 import SectionA from "../components/report_sections/SectionA_Metadata";
@@ -30,6 +28,26 @@ async function openCountryDb(country) {
   const buf = await res.arrayBuffer();
   const SQL = await loadSql();
   return new SQL.Database(new Uint8Array(buf));
+}
+
+// === New helpers for Chat Output auto-generation ===
+function classificationForOutput(val) {
+  if (val === "U") return "U";
+  if (val === "CUI") return "CUI";
+  if (val === "CUIREL") return "CUI//REL TO USA, FVEY";
+  return String(val || "");
+}
+
+function makeDTG(dateStr, timeStr) {
+  // Inputs expected as: dateStr = DDMMMYY, timeStr = HHmm (UTC)
+  if (!dateStr || dateStr.length < 7 || !timeStr || timeStr.length < 4) return "";
+  const DD = dateStr.slice(0, 2);
+  const MMM = dateStr.slice(2, 5).toUpperCase();
+  const YY = dateStr.slice(5, 7);
+  // Assume 2000s for YY; preserves existing behavior of dateStr
+  const HH = timeStr.slice(0, 2);
+  const MM = timeStr.slice(2, 4);
+  return `${DD}${HH}${MM}Z${MMM}${YY}`;
 }
 
 export default function CreateReport() {
@@ -190,6 +208,35 @@ export default function CreateReport() {
     setReportOutput("");
     setCitationOutput("");
   };
+
+  // === New effect: auto-generate Chat Output from current form state ===
+  useEffect(() => {
+    const oc = classificationForOutput(overallClass);
+    const cc = classificationForOutput(collectorClass);
+    const dtg = makeDTG(dateStr, timeStr);
+    const mgrsDisp = mgrs || "";
+    const srcType = sourceType || "";
+    const srcName = sourceName || "";
+    const action = didWhat || "";
+    const body = reportBody || "";
+    const cinDisp = cin || "";
+    const comment = sourceDescription || "";
+
+    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} (${oc})`;
+    setChatOutput(chat.trim());
+  }, [
+    overallClass,
+    dateStr,
+    timeStr,
+    mgrs,
+    sourceType,
+    sourceName,
+    didWhat,
+    reportBody,
+    cin,
+    collectorClass,
+    sourceDescription
+  ]);
 
   // Badge logic
   const sourceBadge = (() => {
