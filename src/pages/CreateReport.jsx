@@ -347,7 +347,7 @@ export default function CreateReport() {
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
-                className="flex-1 h-9 rounded-md bg-slate-800 border border-orange-600 text-orange-200"
+                className="flex-1 h-9 rounded-md bg-slate-800 border border-blue-500 text-blue-500"
                 onClick={() => {}}
               >
                 Send to ChatSurfer

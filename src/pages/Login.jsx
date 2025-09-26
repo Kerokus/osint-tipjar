@@ -121,13 +121,13 @@ export default function Login({ onSuccess }) {
       {/* Logos only, no header/nav */}
       <div className="w-full py-8 px-6 flex items-center justify-between">
         <div className="flex-1 flex justify-start">
-          <img src="/src/assets/idsg-logo.png" alt="IDSG Logo" className="h-28 w-auto object-contain" />
+          <img src="/public/images/idsg-logo.png" alt="IDSG Logo" className="h-28 w-auto object-contain" />
         </div>
         <div className="flex-1 flex justify-center">
-          <img src="/src/assets/tipjar-logo-cropped.png" alt="TIPJar Logo" className="h-36 w-auto object-contain" />
+          <img src="/public/images/tipjar-logo-cropped.png" alt="TIPJar Logo" className="h-36 w-auto object-contain" />
         </div>
         <div className="flex-1 flex justify-end">
-          <img src="/src/assets/innovation-logo.png" alt="Innovation Logo" className="h-28 w-auto object-contain" />
+          <img src="/public/images/innovation-logo.png" alt="Innovation Logo" className="h-28 w-auto object-contain" />
         </div>
       </div>
 
