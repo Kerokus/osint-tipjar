@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
 import SectionA from "../components/report_sections/SectionA_Metadata";
 import SectionB from "../components/report_sections/SectionB_Source";
-import SectionC from "../components/report_sections/SectionC_Body";
-import SectionD from "../components/report_sections/SectionD_Outputs";
 
 // Helper functions that were previously in SectionA
 function formatDDMMMYY(dateUtc) {
@@ -249,13 +247,14 @@ export default function CreateReport() {
     const cc = classificationForOutput(collectorClass);
     const dtg = makeDTG(dateStr, timeStr);
     const srcType = sourceType || "";
+    const usPerson = usper ? "(USPER) " : "";
     const srcName = sourceName || "";
     const action = didWhat || "";
     const body = reportBody || "";
     const mgrsDisp = mgrs || "";
     const desc = sourceDescription || "";
 
-    const report = `(${oc}) On ${dtg}, ${srcType} ${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) ${desc}`;
+    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) ${desc}`;
     setReportOutput(report.trim());
   }, [
     overallClass,
@@ -263,6 +262,7 @@ export default function CreateReport() {
     dateStr,
     timeStr,
     sourceType,
+    usper,
     sourceName,
     reportBody,
     mgrs,

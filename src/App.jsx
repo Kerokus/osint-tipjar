@@ -209,7 +209,6 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <span className="text-sm text-slate-400">TIPJar</span>
           </div>
         </header>
 
