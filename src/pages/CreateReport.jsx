@@ -95,6 +95,13 @@ export default function CreateReport() {
     setOverallClass((prev) => maxClass(prev, collectorClass));
   }, [collectorClass]);
 
+  //If the user selects "USPER" it will remove anything in the Source Description field.
+  useEffect(() => {
+    if (usper) {
+      setSourceDescription("");
+    }
+  }, [usper]);
+
   // Logic/effects that were previously in SectionA
   useEffect(() => {
     const now = new Date();
@@ -218,6 +225,7 @@ export default function CreateReport() {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
     const dtg = makeDTG(dateStr, timeStr);
+    const usPerson = usper ? "(USPER) " : ""; 
     const mgrsDisp = mgrs || "";
     const srcType = sourceType || "";
     const srcName = sourceName || "";
@@ -226,10 +234,11 @@ export default function CreateReport() {
     const cinDisp = cin || "";
     const comment = sourceDescription || "";
 
-    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} (${oc})`;
+    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} (${oc})`;
     setChatOutput(chat.trim());
   }, [
     overallClass,
+    usper,
     dateStr,
     timeStr,
     mgrs,
@@ -254,7 +263,7 @@ export default function CreateReport() {
     const mgrsDisp = mgrs || "";
     const desc = sourceDescription || "";
 
-    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) ${desc}`;
+    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) COLLECTOR COMMENT: ${desc}`;
     setReportOutput(report.trim());
   }, [
     overallClass,
@@ -266,7 +275,8 @@ export default function CreateReport() {
     sourceName,
     reportBody,
     mgrs,
-    sourceDescription
+    sourceDescription,
+    didWhat
   ]);
 
   // Auto-generate Citation Output from current form state ===
@@ -274,13 +284,22 @@ export default function CreateReport() {
   const oc = classificationForOutput(overallClass);
   const dtg = makeDTG(dateStr, timeStr);
   const srcType = cleanSourceType(sourceType || "");
+  const usPersonRep = usper ? "(USPER) " : "";
   const srcName = sourceName || "";
   const uidDisp = uid || "";
   const usPerson = (usper || uspi) ? "YES" : "NO";
+  const citationTitle = articleTitle || "";
+  const citationAuthor = articleAuthor || "";
 
-  const citation = `(${oc}) ${srcType} | ${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+
+  let citation;
+  if (didWhat === "published") {
+    citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+  } else {
+    citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+  }
   setCitationOutput(citation.trim());
-}, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi]);  
+  }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
 
 
   // Badge logic
