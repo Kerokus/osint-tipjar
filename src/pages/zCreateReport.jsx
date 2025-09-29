@@ -48,17 +48,6 @@ function makeDTG(dateStr, timeStr) {
   return `${DD}${HH}${MM}Z${MMM}${YY}`;
 }
 
-// Basic sanitizer for building titles and filenames
-function slugify(s) {
-  return (s || "")
-    .toString()
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^A-Za-z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
 export default function CreateReport() {
   // Overall classification state
   const [overallClass, setOverallClass] = useState("U");
@@ -101,11 +90,6 @@ export default function CreateReport() {
   const [chatOutput, setChatOutput] = useState("");
   const [reportOutput, setReportOutput] = useState("");
   const [citationOutput, setCitationOutput] = useState("");
-
-  // Submit state
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [submitOk, setSubmitOk] = useState("");
 
   useEffect(() => {
     setOverallClass((prev) => maxClass(prev, collectorClass));
@@ -202,7 +186,7 @@ export default function CreateReport() {
   //helper function for Citation Report
   function cleanSourceType(t) {
     if (!t) return "";
-    return t.replace(/\\s*User$/i, "").trim();
+    return t.replace(/\s*User$/i, "").trim();
   }
 
   // The clearForm function now resets state for all sections
@@ -297,127 +281,26 @@ export default function CreateReport() {
 
   // Auto-generate Citation Output from current form state ===
   useEffect(() => {
-    const oc = classificationForOutput(overallClass);
-    const dtg = makeDTG(dateStr, timeStr);
-    const srcType = cleanSourceType(sourceType || "");
-    const usPersonRep = usper ? "(USPER) " : "";
-    const srcName = sourceName || "";
-    const uidDisp = uid || "";
-    const usPerson = (usper || uspi) ? "YES" : "NO";
-    const citationTitle = articleTitle || "";
-    const citationAuthor = articleAuthor || "";
+  const oc = classificationForOutput(overallClass);
+  const dtg = makeDTG(dateStr, timeStr);
+  const srcType = cleanSourceType(sourceType || "");
+  const usPersonRep = usper ? "(USPER) " : "";
+  const srcName = sourceName || "";
+  const uidDisp = uid || "";
+  const usPerson = (usper || uspi) ? "YES" : "NO";
+  const citationTitle = articleTitle || "";
+  const citationAuthor = articleAuthor || "";
 
-    let citation;
-    if (didWhat === "published") {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
-    } else {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
-    }
-    setCitationOutput(citation.trim());
+
+  let citation;
+  if (didWhat === "published") {
+    citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+  } else {
+    citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+  }
+  setCitationOutput(citation.trim());
   }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
 
-  // === SUBMIT HANDLER ===
-  async function handleSubmit() {
-    setSubmitOk("");
-    setSubmitError("");
-    setSubmitting(true);
-    try {
-      // Build DTG and title
-      const dtg = makeDTG(dateStr, timeStr);
-      const titleParts = [
-        slugify(dtg),
-        slugify(country),
-        slugify(location),
-        slugify(cin)
-      ].filter(Boolean);
-      const report_title = titleParts.join("_") || "UNTITLED";
-      const filename = `${report_title}_IMAGE`;
-
-      // Environment
-      const API_URL = import.meta.env.VITE_API_URL;
-      const API_KEY = import.meta.env.VITE_API_KEY;
-      const IMG_URL = import.meta.env.VITE_IMAGE_UPLOAD_URL;
-      const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
-
-      if (!API_URL) throw new Error("VITE_API_URL missing");
-      if (!API_KEY) throw new Error("VITE_API_KEY missing");
-      if (imgFile && (!IMG_URL || !IMG_API_KEY)) {
-        throw new Error("Image upload env vars missing");
-      }
-
-      // Optional image upload first to get stable URL
-      let image_url = "";
-      if (imgFile) {
-        const uploadEndpoint = `${String(IMG_URL).replace(/\/+$/, "")}/${encodeURIComponent(filename)}`;
-        const putRes = await fetch(uploadEndpoint, {
-          method: "PUT",
-          headers: {
-            "x-api-key": IMG_API_KEY,
-            // Default to provided type, fall back to octet-stream
-            "Content-Type": imgFile.type || "application/octet-stream"
-          },
-          body: imgFile
-        });
-        if (!putRes.ok) {
-          const t = await putRes.text().catch(() => "");
-          throw new Error(`Image upload failed: ${putRes.status} ${t}`);
-        }
-        image_url = uploadEndpoint; // use the upload URL as the reference
-      }
-
-      // Build payload for /reports
-      const payload = {
-        overall_classification: overallClass,
-        title: report_title,
-        date_of_information: dateStr,
-        time: timeStr,
-        created_by: cin,
-        macom,
-        country,
-        location,
-        mgrs,
-        is_usper: !!usper,
-        has_uspi: !!uspi,
-        source_platform: sourceType,
-        source_name: sourceName,
-        did_what: didWhat,
-        uid,
-        article_title: articleTitle,
-        article_author: articleAuthor,
-        report_body: reportBody,
-        collector_classification: collectorClass,
-        source_description: sourceDescription,
-        additional_comment_text: additionalComment,
-        ...(image_url ? { image_url } : {})
-      };
-
-      const authToken = localStorage.getItem("token");
-      const res = await fetch(`${String(API_URL).replace(/\/+$/, "")}/reports`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Report create failed: ${res.status} ${text}`);
-      }
-      const data = await res.json().catch(() => ({}));
-
-      setSubmitOk(`Report created${data?.id ? " with id " + data.id : ""}.`);
-      // Optional: clear form after successful submit
-      clearForm();
-    } catch (err) {
-      console.error(err);
-      setSubmitError(err?.message || "Submit failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   // Badge logic
   const sourceBadge = (() => {
@@ -548,23 +431,16 @@ export default function CreateReport() {
             />
           </div>
           {/* SUBMIT button */}
-          <div className="mt-4 space-y-2">
-            <button
+            <div className="mt-4">
+              <button
               type="button"
-              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold disabled:opacity-60"
-              onClick={handleSubmit}
-              disabled={submitting}
+              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold"
             >
-              {submitting ? "SUBMITTING..." : "SUBMIT"}
-            </button>
-            {submitOk ? (
-              <div className="text-green-400 text-sm">{submitOk}</div>
-            ) : null}
-            {submitError ? (
-              <div className="text-red-400 text-sm">{submitError}</div>
-            ) : null}
+              SUBMIT
+              </button>
+            </div>
           </div>
-        </div>
+        
 
         {/* Column 2 */}
         <div className="col-span-12 lg:col-span-6 space-y-3">
