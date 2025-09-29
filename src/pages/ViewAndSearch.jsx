@@ -1,42 +1,50 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react"; // 1. Import useCallback
 import ReportSearch from "./ReportSearch";
-import ViewReport from "./ViewReport"; // 1. Import the new modal component
+import ViewReport from "./ViewReport";
 
 export default function ViewAndSearch() {
   const [mode, setMode] = useState("view"); // "view" | "search"
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
-  
-  // 2. Add state to track the selected report for the modal
   const [selectedReportId, setSelectedReportId] = useState(null);
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
   const URL = `${BASE}/reports`;
 
-  useEffect(() => {
-    if (mode !== "view") return;
+  // 2. Create a reusable function to fetch reports
+  const fetchReports = useCallback(async () => {
     let cancel = false;
-    (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const res = await fetch(URL, {
-          method: "GET",
-          headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!cancel) setRows(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!cancel) setErr(String(e));
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    })();
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch(URL, {
+        method: "GET",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!cancel) setRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      if (!cancel) setErr(String(e));
+    } finally {
+      if (!cancel) setLoading(false);
+    }
     return () => { cancel = true; };
-  }, [mode, URL, API_KEY]);
+  }, [URL, API_KEY]); // Dependencies for the callback
+
+  // 3. Update the useEffect to use the new fetchReports function
+  useEffect(() => {
+    if (mode === "view") {
+      fetchReports();
+    }
+  }, [mode, fetchReports]);
+
+  // 4. This new function will be passed to the modal to trigger a refresh
+  const handleDeleteSuccess = () => {
+    fetchReports();
+  };
 
   return (
     <div className="w-full space-y-4">
@@ -59,18 +67,17 @@ export default function ViewAndSearch() {
       </div>
 
       {mode === "view" ? (
-        // 3. Pass a function to the table to handle clicks
         <ViewAllTable base={BASE} rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
       ) : (
-        // 4. Pass the same function to the search component
         <ReportSearch onViewReport={setSelectedReportId} />
       )}
       
-      {/* 5. Conditionally render the modal */}
       {selectedReportId && (
         <ViewReport 
           reportId={selectedReportId} 
           onClose={() => setSelectedReportId(null)} 
+          // 5. Pass the new refresh function as a prop
+          onDeleteSuccess={handleDeleteSuccess}
         />
       )}
     </div>
@@ -79,7 +86,6 @@ export default function ViewAndSearch() {
 
 /* ---------- View All table ---------- */
 
-// 6. Update ViewAllTable to use the new onViewReport prop
 function ViewAllTable({ base, rows, loading, err, onViewReport }) {
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
   if (err) return <div className="text-red-400">Error: {err}</div>;
@@ -103,7 +109,6 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
               <tr
                 key={id}
                 className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                // This onClick now opens the modal instead of a new tab
                 onClick={() => onViewReport(id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -111,7 +116,7 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
                     onViewReport(id);
                   }
                 }}
-                role="button" // Changed from "link" to "button" as it triggers an in-page action
+                role="button"
                 tabIndex={0}
                 title="View report details"
               >
