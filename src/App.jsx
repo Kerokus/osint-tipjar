@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Admin from "./pages/Admin";
-import Search from "./pages/Search";
+import ViewAndSearch from "./pages/ViewAndSearch";
 import CreateReport from "./pages/CreateReport";
 import Sources from "./pages/Sources";
 import Login from "./pages/Login";
@@ -40,7 +40,7 @@ function App() {
   const tabs = [
     { key: "newReport", label: "Create Report" },
     { key: "sources", label: "Sources" },
-    { key: "search", label: "Search" },
+    { key: "search", label: "View and Search" },
     { key: "settings", label: "Settings" },
     ...(isAdmin ? [{ key: "admin", label: "Admin" }] : []),
   ];
@@ -215,7 +215,7 @@ function App() {
         <main className="flex-1 p-4 overflow-auto">
           {activeTab === "newReport" && <CreateReport />}
           {activeTab === "sources" && <Sources />}
-          {activeTab === "search" && <Search />}
+          {activeTab === "search" && <ViewAndSearch />}
           {activeTab === "settings" && <Settings />}
           {isAdmin && activeTab === "admin" && <Admin />}
         </main>
