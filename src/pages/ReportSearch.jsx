@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 /**
  * ReportSearch.jsx
@@ -6,7 +6,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
  * Provides a UI for searching reports based on the available API criteria.
  * It includes input fields, result display, and pagination.
  */
-export default function ReportSearch() {
+export default function ReportSearch({ onViewReport }) { // 1. Accept the onViewReport prop
   // State for search form inputs
   const [params, setParams] = useState({
     q: "",
@@ -197,7 +197,8 @@ export default function ReportSearch() {
         )}
 
         {results.length > 0 && (
-          <ResultsTable base={BASE} rows={results} />
+          // 2. Pass the prop down to the results table
+          <ResultsTable rows={results} onViewReport={onViewReport} />
         )}
       </div>
     </div>
@@ -256,13 +257,8 @@ function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, 
   );
 }
 
-function ResultsTable({ base, rows }) {
-  const openRow = (id) => {
-    if (!id) return;
-    const href = `${base}/reports/${encodeURIComponent(id)}`;
-    window.open(href, "_blank", "noopener,noreferrer");
-  };
-
+// 3. Update ResultsTable to use the new prop
+function ResultsTable({ rows, onViewReport }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-600">
       <table className="min-w-full text-sm">
@@ -281,11 +277,12 @@ function ResultsTable({ base, rows }) {
               <tr
                 key={id}
                 className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                onClick={() => openRow(id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRow(id); }}}
-                role="link"
+                // This onClick now opens the modal
+                onClick={() => onViewReport(id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onViewReport(id); }}}
+                role="button" // Changed from "link"
                 tabIndex={0}
-                title="Open report"
+                title="View report details"
               >
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information)}</Td>
@@ -319,6 +316,7 @@ function fmtDate(d) {
   // Kept simple for now. Add back parseDDMMMYY if that format is also used here.
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
   if (!Number.isFinite(t)) return String(d);
+  // Corrected line with the proper "T"
   return new Date(t).toLocaleDateString();
 }
 

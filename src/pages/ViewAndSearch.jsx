@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import ReportSearch from "./ReportSearch";
+import ViewReport from "./ViewReport"; // 1. Import the new modal component
 
 export default function ViewAndSearch() {
   const [mode, setMode] = useState("view"); // "view" | "search"
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  
+  // 2. Add state to track the selected report for the modal
+  const [selectedReportId, setSelectedReportId] = useState(null);
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
@@ -55,9 +59,19 @@ export default function ViewAndSearch() {
       </div>
 
       {mode === "view" ? (
-        <ViewAllTable base={BASE} rows={rows} loading={loading} err={err} />
+        // 3. Pass a function to the table to handle clicks
+        <ViewAllTable base={BASE} rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
       ) : (
-        <ReportSearch />
+        // 4. Pass the same function to the search component
+        <ReportSearch onViewReport={setSelectedReportId} />
+      )}
+      
+      {/* 5. Conditionally render the modal */}
+      {selectedReportId && (
+        <ViewReport 
+          reportId={selectedReportId} 
+          onClose={() => setSelectedReportId(null)} 
+        />
       )}
     </div>
   );
@@ -65,12 +79,11 @@ export default function ViewAndSearch() {
 
 /* ---------- View All table ---------- */
 
-function ViewAllTable({ base, rows, loading, err }) {
+// 6. Update ViewAllTable to use the new onViewReport prop
+function ViewAllTable({ base, rows, loading, err, onViewReport }) {
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
   if (err) return <div className="text-red-400">Error: {err}</div>;
   if (!rows?.length) return <div className="text-slate-300">No reports.</div>;
-
-  const openRow = (href) => window.open(href, "_blank", "noopener,noreferrer");
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-600">
@@ -86,21 +99,21 @@ function ViewAllTable({ base, rows, loading, err }) {
         <tbody className="text-slate-200">
           {rows.map((r, i) => {
             const id = r.id ?? r.report_id ?? r._id ?? i;
-            const href = `${base}/reports/${encodeURIComponent(id)}`;
             return (
               <tr
                 key={id}
                 className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                onClick={() => openRow(href)}
+                // This onClick now opens the modal instead of a new tab
+                onClick={() => onViewReport(id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    openRow(href);
+                    onViewReport(id);
                   }
                 }}
-                role="link"
+                role="button" // Changed from "link" to "button" as it triggers an in-page action
                 tabIndex={0}
-                title="Open report"
+                title="View report details"
               >
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information ?? r.report_date)}</Td>
