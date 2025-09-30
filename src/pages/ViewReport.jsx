@@ -141,6 +141,7 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
                 <MetadataRow label="Country" value={report.country} />
                 <MetadataRow label="Location" value={report.location} />
                 <MetadataRow label="MGRS" value={report.mgrs} />
+                <MetadataRow label="Additional Comment Text" value={report.additional_comment_text} />
               </div>
               <ImagePane imageUrl={report.image_url} />
             </div>

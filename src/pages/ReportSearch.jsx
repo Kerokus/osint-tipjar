@@ -42,7 +42,8 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     const { name, value } = e.target;
     
     // Check if the input is the 'country' field
-    const finalValue = name === 'country' 
+    const uppercaseFields = ['country', 'macom', 'created_by']
+    const finalValue = uppercaseFields.includes(name) 
       ? value.toUpperCase() 
       : value;
 
