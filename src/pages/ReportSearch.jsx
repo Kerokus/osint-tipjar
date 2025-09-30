@@ -16,6 +16,8 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     macom: "",
     created_from: "",
     created_to: "",
+    location: "",
+    created_by: "",
   });
 
   // State for the executed search query. This triggers the API call.
@@ -65,6 +67,8 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       macom: "",
       created_from: "",
       created_to: "",
+      location: "",
+      created_by: "",
     });
     setActiveQuery(null);
     setResults([]);
@@ -143,8 +147,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       <form onSubmit={handleSearch} onReset={handleReset} className="p-4 bg-slate-800 border border-slate-600 rounded-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Input label="Full-Text Search" name="q" value={params.q} onChange={handleParamChange} placeholder="Search title, body..." />
-          <Input label="Country" name="country" value={params.country} onChange={handleParamChange} placeholder="KUWAIT" />
-          <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
+          <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="e.g., analyst_name" />
           <div>
             <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">
               Source Platform
@@ -164,6 +167,9 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
               ))}
             </select>
           </div>
+          <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
+          <Input label="Country" name="country" value={params.country} onChange={handleParamChange} placeholder="KUWAIT" />
+          <Input label="Location" name="location" value={params.location} onChange={handleParamChange} placeholder="e.g., Baghdad" />
           <Input label="Source Name" name="source_name" value={params.source_name} onChange={handleParamChange} placeholder="e.g., @example_channel" />
           <Input type="date" label="Created After" name="created_from" value={params.created_from} onChange={handleParamChange} />
           <Input type="date" label="Created Before" name="created_to" value={params.created_to} onChange={handleParamChange} />
@@ -267,6 +273,7 @@ function ResultsTable({ rows, onViewReport }) {
             <Th>Report Title</Th>
             <Th>Date of Information</Th>
             <Th>Country</Th>
+            <Th>Location</Th> {/* Added */}
             <Th>Body</Th>
           </tr>
         </thead>
@@ -287,6 +294,7 @@ function ResultsTable({ rows, onViewReport }) {
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information)}</Td>
                 <Td>{nz(r.country)}</Td>
+                <Td>{nz(r.location)}</Td> {/* Added */}
                 <Td className="max-w-[48ch]">{truncate(nz(r.report_body), 240)}</Td>
               </tr>
             );

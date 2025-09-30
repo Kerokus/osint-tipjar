@@ -99,6 +99,7 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
             <Th>Report Title</Th>
             <Th>Date of Information</Th>
             <Th>Country</Th>
+            <Th>Location</Th> {/* Added */}
             <Th>Body</Th>
           </tr>
         </thead>
@@ -123,6 +124,7 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information ?? r.report_date)}</Td>
                 <Td>{nz(r.country)}</Td>
+                <Td>{nz(r.location)}</Td> {/* Added */}
                 <Td className="max-w-[48ch]">{truncate(nz(r.report_body), 240)}</Td>
               </tr>
             );
