@@ -23,8 +23,9 @@ export default function Sources() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // State for the modal
+  // State for the modals
   const [selectedSource, setSelectedSource] = useState(null);
+  const [isAddingSource, setIsAddingSource] = useState(false); // --- ADDED --- State for the new modal
 
   // State for pagination
   const [page, setPage] = useState(1);
@@ -76,15 +77,11 @@ export default function Sources() {
     const offset = (page - 1) * limit;
     const urlParams = new URLSearchParams();
 
-    // --- START: MODIFICATION ---
-    // Define which keys should get a "_like" parameter
-    const likeableKeys = ["source_name", "source_description"];
+    const likeableKeys = ["source_name", "source_description", "source_platform", "added_by"];
 
-    // Append non-empty parameters from the active query
     for (const key in activeQuery) {
       if (activeQuery[key]) {
         urlParams.append(key, activeQuery[key]);
-        // If the key is one of our text search fields, add the _like flag
         if (likeableKeys.includes(key)) {
           urlParams.append(`${key}_like`, "true");
         }
@@ -106,11 +103,10 @@ export default function Sources() {
 
       setSources(Array.isArray(data) ? data : []);
 
-      // Estimate total if we are on the last page
       if (data.length < limit) {
         setTotal(offset + data.length);
       } else {
-        setTotal(0); // Total is unknown
+        setTotal(0); 
       }
     } catch (e) {
       if (!cancel) setError(String(e));
@@ -155,9 +151,19 @@ export default function Sources() {
           </div>
           <Input label="Added By" name="added_by" value={params.added_by} onChange={handleParamChange} placeholder="e.g., analyst_cin" />
         </div>
-        <div className="flex items-center gap-4 mt-4">
-          <button type="submit" className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-md text-white font-semibold">Search</button>
-          <button type="reset" className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200">Reset</button>
+        {/* --- MODIFIED --- Added a new div wrapper and the "Add Source" button */}
+        <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-4">
+                <button type="submit" className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-md text-white font-semibold">Search</button>
+                <button type="reset" className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200">Reset</button>
+            </div>
+            <button 
+                type="button" 
+                onClick={() => setIsAddingSource(true)}
+                className="px-4 py-2 text-sm bg-green-600 hover:bg-green-500 rounded-md text-white font-semibold"
+            >
+                Add Source
+            </button>
         </div>
       </form>
       
@@ -174,15 +180,28 @@ export default function Sources() {
         )}
       </div>
       
-      {/* Modal */}
+      {/* Modals */}
       {selectedSource && (
         <SourceModal 
           source={selectedSource} 
           onClose={() => setSelectedSource(null)}
           isAdmin={isAdmin}
           onSaveSuccess={() => {
-            setSelectedSource(null); // Close modal on success
-            fetchSources(); // Re-fetch the list
+            setSelectedSource(null); 
+            fetchSources(); 
+          }}
+          base={BASE}
+          apiKey={API_KEY}
+        />
+      )}
+      
+      {/* --- ADDED --- Render the new AddSourceModal */}
+      {isAddingSource && (
+        <AddSourceModal
+          onClose={() => setIsAddingSource(false)}
+          onAddSuccess={() => {
+            setIsAddingSource(false); // Close modal on success
+            fetchSources(); // Re-fetch the list to show the new source
           }}
           base={BASE}
           apiKey={API_KEY}
@@ -194,6 +213,105 @@ export default function Sources() {
 
 
 /* ---------- Sub-components ---------- */
+
+// --- ADDED --- New component for the "Add Source" modal
+function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
+  const [newSource, setNewSource] = useState({
+    source_name: "",
+    source_platform: "",
+    source_description: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState("");
+
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewSource(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    setModalError("");
+    if (!newSource.source_name || !newSource.source_platform) {
+      setModalError("Source Name and Platform are required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const cin = localStorage.getItem("cin");
+      const token = localStorage.getItem("token");
+      if (!cin || !token) throw new Error("Authentication error. Please log in again.");
+
+      const body = {
+        ...newSource,
+        added_by: cin,
+      };
+
+      const res = await fetch(`${base}/sources`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP Error: ${res.status}`);
+      }
+      
+      onAddSuccess();
+
+    } catch (e) {
+      setModalError(String(e).replace(/^Error:\s*/, ''));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-600 bg-slate-800 shadow-xl">
+        <div className="px-6 py-4 border-b border-slate-600 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-slate-100">Add New Source</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">&times;</button>
+        </div>
+        
+        <div className="p-6 space-y-4">
+          {modalError && <div className="p-3 text-sm text-red-200 bg-red-800/50 border border-red-700 rounded-md">{modalError}</div>}
+          
+          <Input label="Source Name" name="source_name" value={newSource.source_name} onChange={handleChange} placeholder="e.g., @example_channel" />
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Platform</label>
+            <select name="source_platform" value={newSource.source_platform} onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Select a Platform</option>
+              {platformOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Description</label>
+            <textarea name="source_description" value={newSource.source_description} onChange={handleChange} rows="4" placeholder="(Optional) Add any relevant details..." className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-slate-600 flex justify-end items-center gap-4">
+          <button onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200 disabled:opacity-50">Cancel</button>
+          <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 text-sm bg-green-600 hover:bg-green-500 rounded-md text-white font-semibold disabled:opacity-50">
+            {isSubmitting ? "Submitting..." : "Submit"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function SourceList({ rows, onViewSource }) {
   return (
@@ -277,7 +395,7 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
         throw new Error(errData.message || `HTTP Error: ${res.status}`);
       }
       
-      onSaveSuccess(); // Trigger parent component refresh and close
+      onSaveSuccess();
 
     } catch(e) {
       setModalError(String(e).replace(/^Error:\s*/, ''));
@@ -289,7 +407,6 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
   const handleCancel = () => {
       setIsEditing(false);
       setModalError("");
-      // Reset fields to original state
       setEditableSource({
           source_name: source.source_name,
           source_platform: source.source_platform,
@@ -318,10 +435,10 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
         throw new Error(errData.message || `HTTP Error: ${res.status}`);
       }
 
-      onSaveSuccess(); // This prop will close the modal and refresh the list
+      onSaveSuccess();
     } catch (e) {
       setModalError(String(e).replace(/^Error:\s*/, ''));
-      setIsDeleting(false); // Stop loading indicator on error
+      setIsDeleting(false); 
     }
   };
 
@@ -335,7 +452,6 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-2xl rounded-2xl border border-slate-600 bg-slate-800 shadow-xl">
-        {/* Header */}
         <div className="px-6 py-4 border-b border-slate-600 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-slate-100">
             Source Details <span className="font-bold text-slate-400">(ID: {source.id})</span>
@@ -343,18 +459,15 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
           <button onClick={onClose} className="text-slate-400 hover:text-white">&times;</button>
         </div>
         
-        {/* Body */}
         <div className="p-6 space-y-4">
             {modalError && <div className="p-3 text-sm text-red-200 bg-red-800/50 border border-red-700 rounded-md">{modalError}</div>}
             
-            {/* Main Info */}
             <div className="space-y-3">
                 <EditableField label="Source Name" name="source_name" isEditing={isEditing} value={editableSource.source_name} onChange={handleEditChange} />
                 <EditableField as="select" label="Platform" name="source_platform" isEditing={isEditing} value={editableSource.source_platform} onChange={handleEditChange} options={platformOptions} />
                 <EditableField as="textarea" label="Description" name="source_description" isEditing={isEditing} value={editableSource.source_description} onChange={handleEditChange} />
             </div>
 
-            {/* Metadata Grid */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 pt-4 border-t border-slate-700">
               <MetadataField label="Added By" value={nz(source.added_by)} />
               <MetadataField label="Added On" value={fmtDate(source.added_on)} />
@@ -363,10 +476,8 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
             </div>
         </div>
 
-        {/* Footer with actions */}
         <div className="px-6 py-4 border-t border-slate-600">
           {isConfirmingDelete ? (
-            // Confirmation View
             <div className="flex justify-between items-center">
               <p className="text-sm font-semibold text-red-300">Are you sure?</p>
               <div className="flex items-center gap-4">
@@ -387,14 +498,13 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
               </div>
             </div>
           ) : (
-            // Standard View
             <div className="flex items-center justify-between">
               <div>
                 <button
                   className="px-4 py-2 text-sm bg-red-700 hover:bg-red-600 rounded-md text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!isAdmin || isEditing}
                   title={getDeleteTitle()}
-                  onClick={() => setIsConfirmingDelete(true)} // Changed onClick
+                  onClick={() => setIsConfirmingDelete(true)}
                 >
                   Delete
                 </button>
@@ -493,7 +603,7 @@ function fmtDate(d) {
   if (!d) return "—";
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
   if (!Number.isFinite(t)) return String(d);
-  return new Date(t).toLocaleString(); // Use toLocaleString for date and time
+  return new Date(t).toLocaleString();
 }
 
 function nz(v) {
