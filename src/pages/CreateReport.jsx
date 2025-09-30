@@ -577,8 +577,8 @@ export default function CreateReport() {
               onChange={(e) => setChatChannel(e.target.value)}
               className="w-full h-9 rounded-md bg-slate-900 border border-slate-700"
             >
-              <option>Placeholder 1</option>
-              <option>Placeholder 2</option>
+              <option>513th-idsg-test</option>
+              <option>513th_mibt_osint_cui</option>
             </select>
           </div>
 
