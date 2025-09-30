@@ -25,7 +25,7 @@ export default function SectionB_Source({
     setUid(sanitizedValue);
   };
 
-  const sourceOptions = ["Website", "X User", "Telegram User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const sourceOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
   const didWhatOptions = ["reported", "posted", "stated", "claimed", "published", "observed"];
 
   return (

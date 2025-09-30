@@ -202,7 +202,8 @@ export default function CreateReport() {
   //helper function for Citation Report
   function cleanSourceType(t) {
     if (!t) return "";
-    return t.replace(/\\s*User$/i, "").trim();
+    // Trim the string FIRST, then perform the replacement.
+    return t.trim().replace(/\s*User$/i, "");
   }
 
   // The clearForm function now resets state for all sections

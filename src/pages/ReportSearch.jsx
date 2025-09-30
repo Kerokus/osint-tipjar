@@ -47,7 +47,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     setParams((prev) => ({ ...prev, [name]: finalValue }));
   };
 
-  const platformOptions = ["Website", "X User", "Telegram User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
 
   const handleSearch = (e) => {
     e.preventDefault();
