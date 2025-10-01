@@ -119,6 +119,7 @@ export default function CreateReport() {
   // State for dirty word search
   const [dirtyWords, setDirtyWords] = useState([]);
   const [filterWordFound, setFilterWordFound] = useState(false);
+  const [overrideFilter, setOverrideFilter] = useState(false);
   
   // Submit state for main report form
   const [submitting, setSubmitting] = useState(false);
@@ -142,10 +143,11 @@ export default function CreateReport() {
     fetchWords();
   }, []);
 
-  // Effect to check for dirty words in the report body
+  // Effect to check for dirty words in the report body and apply classification logic
   useEffect(() => {
     if (!dirtyWords.length || !reportBody) {
         setFilterWordFound(false);
+        setOverrideFilter(false); // Reset override when no word is found
         return;
     }
 
@@ -162,10 +164,15 @@ export default function CreateReport() {
     }
 
     setFilterWordFound(wordFound);
-    if (wordFound) {
+    if (!wordFound) {
+      setOverrideFilter(false); // Reset if words are removed
+    }
+
+    // Only force classification up if a word is found AND the override is not checked
+    if (wordFound && !overrideFilter) {
         setOverallClass(prev => maxClass(prev, highestClassification));
     }
-  }, [reportBody, dirtyWords, maxClass]);
+  }, [reportBody, dirtyWords, overrideFilter, maxClass]);
 
   useEffect(() => {
     setOverallClass((prev) => maxClass(prev, collectorClass));
@@ -352,6 +359,7 @@ const handleSourceSelect = (source) => {
     setSourceExists(false);
     setShowSourceModal(false);
     setMatchingSources([]);
+    setOverrideFilter(false); // Reset override
   };
 
   // === Auto-generate Chat Output from current form state ===
@@ -776,11 +784,25 @@ const handleSourceSelect = (source) => {
         <div className="col-span-12 lg:col-span-6 space-y-3">
           {/* Report Body */}
           <div>
-            <div className="flex items-center">
-                <label className="block text-xs">Report Body</label>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <label className="block text-xs">Report Body</label>
+                    {filterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
+                </div>
                 {filterWordFound && (
-                    <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
-                        Filter word found
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="overrideFilter"
+                            checked={overrideFilter}
+                            onChange={(e) => setOverrideFilter(e.target.checked)}
+                            className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                        />
+                        <label htmlFor="overrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
                     </div>
                 )}
             </div>

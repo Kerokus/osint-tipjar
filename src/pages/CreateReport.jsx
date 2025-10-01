@@ -66,6 +66,13 @@ function escapeRegex(string) {
 }
 
 export default function CreateReport() {
+  // --- MAPPING FOR CHAT CHANNELS ---
+  const chatChannels = {
+    "U" : "513th_mibt_osint",
+    "CUI" : "513th_mibt_osint_cui",
+    "CUIREL" : "513th_mibt_osint_cui_rel"
+  };
+
   // Overall classification state
   const [overallClass, setOverallClass] = useState("U");
   const rank = { U: 0, CUI: 1, CUIREL: 2 }; // U < CUI < CUI//REL TO USA, FVEY
@@ -110,7 +117,8 @@ export default function CreateReport() {
 
   // New state for Column 2
   const [displayName, setDisplayName] = useState("");
-  const [chatChannel, setChatChannel] = useState("513th-idsg-test");
+  // --- UPDATED CHAT CHANNEL STATE ---
+  const [chatChannel, setChatChannel] = useState(chatChannels["U"]); // Default to U channel
   const [chatOutput, setChatOutput] = useState("");
   const [reportOutput, setReportOutput] = useState("");
   const [citationOutput, setCitationOutput] = useState("");
@@ -133,6 +141,12 @@ export default function CreateReport() {
   useEffect(() => {
     setDisplayName(localStorage.getItem("display_name") || "");
   }, []);
+
+  // --- NEW EFFECT TO AUTO-SET CHANNEL ---
+  useEffect(() => {
+    setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
+  }, [overallClass]);
+
 
   // Fetch dirty words on component mount
   useEffect(() => {
@@ -170,7 +184,7 @@ export default function CreateReport() {
 
     // Only force classification up if a word is found AND the override is not checked
     if (wordFound && !overrideFilter) {
-        setOverallClass(prev => maxClass(prev, highestClassification));
+        setOverallClass(maxClass(collectorClass, highestClassification));
     }
   }, [reportBody, dirtyWords, overrideFilter, maxClass]);
 
@@ -350,7 +364,7 @@ const handleSourceSelect = (source) => {
     setAdditionalComment("");
     setOverallClass("U");
     // Column 2 new state reset
-    setChatChannel("513th-idsg-test");
+    setChatChannel(chatChannels["U"]); // UPDATED
     setChatOutput("");
     setReportOutput("");
     setCitationOutput("");
@@ -887,14 +901,9 @@ const handleSourceSelect = (source) => {
                 </span>
               </span>
             </div>
-            <select
-              value={chatChannel}
-              onChange={(e) => setChatChannel(e.target.value)}
-              className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-2"
-            >
-              <option>513th-idsg-test</option>
-              <option>513th_mibt_osint_cui</option>
-            </select>
+            <div className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3 flex items-center">
+              <p className="text-sm text-slate-200">{chatChannel}</p>
+            </div>
           </div>
 
           {/* 2. Chat Output */}
