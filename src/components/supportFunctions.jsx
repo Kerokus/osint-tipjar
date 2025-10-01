@@ -51,3 +51,33 @@ export async function findSourceByName(sourceName) {
     return null; // Return null to indicate a fetch error occurred
   }
 }
+
+export async function getDirtyWords() {
+  const API_URL = import.meta.env.VITE_API_URL;
+  const API_KEY = import.meta.env.VITE_API_KEY;
+
+  if (!API_URL || !API_KEY) {
+    console.error("API URL or API Key is not configured.");
+    return [];
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": API_KEY,
+    // No auth token needed based on API docs for this endpoint
+  };
+
+  const endpoint = `${String(API_URL).replace(/\/+$/, "")}/dirty_words`;
+
+  try {
+    const response = await fetch(endpoint, { method: "GET", headers: headers });
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Failed to fetch dirty words:", error);
+    return []; // Return empty array on error to prevent crashes
+  }
+}

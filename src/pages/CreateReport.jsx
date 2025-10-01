@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
 import SectionA from "../components/report_sections/SectionA_Metadata";
 import SectionB from "../components/report_sections/SectionB_Source";
-import { findSourceByName } from "../components/supportFunctions";
+import { findSourceByName, getDirtyWords } from "../components/supportFunctions";
 
 // Helper functions that were previously in SectionA
 function formatDDMMMYY(dateUtc) {
@@ -60,6 +60,11 @@ function slugify(s) {
     .replace(/^_+|_+$/g, "");
 }
 
+// Helper to escape special regex characters from strings
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export default function CreateReport() {
   // Overall classification state
   const [overallClass, setOverallClass] = useState("U");
@@ -111,6 +116,11 @@ export default function CreateReport() {
   const [citationOutput, setCitationOutput] = useState("");
   const [chatMessageSent, setChatMessageSent] = useState(false);
 
+  // State for dirty word search
+  const [dirtyWords, setDirtyWords] = useState([]);
+  const [filterWordFound, setFilterWordFound] = useState(false);
+  const [overrideFilter, setOverrideFilter] = useState(false);
+  
   // Submit state for main report form
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -124,9 +134,49 @@ export default function CreateReport() {
     setDisplayName(localStorage.getItem("display_name") || "");
   }, []);
 
+  // Fetch dirty words on component mount
+  useEffect(() => {
+    async function fetchWords() {
+        const words = await getDirtyWords();
+        setDirtyWords(words);
+    }
+    fetchWords();
+  }, []);
+
+  // Effect to check for dirty words in the report body and apply classification logic
+  useEffect(() => {
+    if (!dirtyWords.length || !reportBody) {
+        setFilterWordFound(false);
+        setOverrideFilter(false); // Reset override when no word is found
+        return;
+    }
+
+    let wordFound = false;
+    let highestClassification = "U";
+
+    for (const word of dirtyWords) {
+        const escapedWord = escapeRegex(word.dirty_word);
+        const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
+        if (regex.test(reportBody)) {
+            wordFound = true;
+            highestClassification = maxClass(highestClassification, word.word_classification);
+        }
+    }
+
+    setFilterWordFound(wordFound);
+    if (!wordFound) {
+      setOverrideFilter(false); // Reset if words are removed
+    }
+
+    // Only force classification up if a word is found AND the override is not checked
+    if (wordFound && !overrideFilter) {
+        setOverallClass(prev => maxClass(prev, highestClassification));
+    }
+  }, [reportBody, dirtyWords, overrideFilter, maxClass]);
+
   useEffect(() => {
     setOverallClass((prev) => maxClass(prev, collectorClass));
-  }, [collectorClass]);
+  }, [collectorClass, maxClass]);
 
   //If the user selects "USPER" it will remove anything in the Source Description field.
   useEffect(() => {
@@ -241,6 +291,14 @@ export default function CreateReport() {
   return () => clearTimeout(sourceSearchDebounceRef.current);
 }, [sourceName]);
 
+const handleSourceSelect = (source) => {
+    setSourceDescription(source.source_description || "");
+    setSourceType(source.source_platform || "Website");
+    setExistingSourceId(source.id);
+    setSourceExists(true);
+    setShowSourceModal(false); // Close the modal after selection
+};
+
   const onDrop = (e) => {
     e.preventDefault();
     const f = e.dataTransfer.files?.[0];
@@ -301,6 +359,7 @@ export default function CreateReport() {
     setSourceExists(false);
     setShowSourceModal(false);
     setMatchingSources([]);
+    setOverrideFilter(false); // Reset override
   };
 
   // === Auto-generate Chat Output from current form state ===
@@ -725,11 +784,32 @@ export default function CreateReport() {
         <div className="col-span-12 lg:col-span-6 space-y-3">
           {/* Report Body */}
           <div>
-            <label className="block text-xs">Report Body</label>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <label className="block text-xs">Report Body</label>
+                    {filterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
+                </div>
+                {filterWordFound && (
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="overrideFilter"
+                            checked={overrideFilter}
+                            onChange={(e) => setOverrideFilter(e.target.checked)}
+                            className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                        />
+                        <label htmlFor="overrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                    </div>
+                )}
+            </div>
             <textarea
               value={reportBody}
               onChange={(e) => setReportBody(e.target.value)}
-              className="w-full min-h-[130px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+              className="w-full min-h-[130px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2 mt-1"
             />
           </div>
 
