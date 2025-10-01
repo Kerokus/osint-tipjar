@@ -223,6 +223,8 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState("");
+  // --- ADDED --- State for the confirmation checkbox
+  const [isConfirmed, setIsConfirmed] = useState(false);
 
   const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
 
@@ -301,11 +303,31 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-600 flex justify-end items-center gap-4">
-          <button onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200 disabled:opacity-50">Cancel</button>
-          <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 text-sm bg-green-600 hover:bg-green-500 rounded-md text-white font-semibold disabled:opacity-50">
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </button>
+        {/* --- MODIFIED --- This is the updated footer section */}
+        <div className="px-6 py-4 border-t border-slate-600 flex justify-between items-center gap-4">
+          <div className="flex items-center">
+            <input
+              id="us-person-confirm"
+              type="checkbox"
+              checked={isConfirmed}
+              onChange={(e) => setIsConfirmed(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="us-person-confirm" className="ml-2 block text-sm text-slate-400 select-none">
+              I understand that sources on this table should not be U.S. Persons
+            </label>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200 disabled:opacity-50">Cancel</button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isConfirmed}
+              className="px-4 py-2 text-sm bg-green-600 hover:bg-green-500 rounded-md text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
