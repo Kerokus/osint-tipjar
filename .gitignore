@@ -18,6 +18,8 @@ dist
 dist-ssr
 *.local
 country_locations
+*.zip
+*.tar
 
 # Editor directories and files
 .vscode/*

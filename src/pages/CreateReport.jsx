@@ -22,7 +22,7 @@ async function loadSql() {
 }
 async function openCountryDb(country) {
   const encoded = encodeURIComponent(`${country}.db`);
-  const res = await fetch(`/country_locations/${encoded}`);
+  const res = await fetch(`${import.meta.env.BASE_URL}country_locations/${encoded}`);
   if (!res.ok) throw new Error(`DB fetch failed: ${res.status}`);
   const buf = await res.arrayBuffer();
   const SQL = await loadSql();
@@ -206,7 +206,7 @@ export default function CreateReport() {
     setTimeStr(formatHHmmUTC(now));
   }, []);
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`${import.meta.env.BASE_URL}/country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         setMacoms(Object.keys(data));

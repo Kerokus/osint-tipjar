@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
 import bcrypt from "bcryptjs";
+import idsgLogo from "../assets/idsg-logo.png";
+import tipjarLogo from "../assets/tipjar-logo-cropped.png";
+import innovationLogo from "../assets/innovation-logo.png";
+
 
 export default function Login({ onSuccess }) {
   const [cin, setCin] = useState("");
@@ -12,6 +16,8 @@ export default function Login({ onSuccess }) {
   const [confirmPin, setConfirmPin] = useState("");
   const [changing, setChanging] = useState(false);
   const [changeErr, setChangeErr] = useState("");
+
+  const [showConsentModal, setShowConsentModal] = useState(true);
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
@@ -116,18 +122,62 @@ export default function Login({ onSuccess }) {
     }
   }
 
+  const ConsentModal = () => (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" />
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-800 shadow-xl m-4 flex flex-col">
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4 text-center">Data Usage Consent</h2>
+          <p className="mb-4 text-slate-300">
+            You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only.
+          </p>
+          <p className="mb-4 text-slate-300">
+            By using this IS (which includes any device attached to this IS), you consent to the following conditions:
+          </p>
+          <ul className="space-y-3 list-disc list-inside text-slate-300">
+            <li>
+              The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations, and personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.
+            </li>
+            <li>
+              At any time, the USG may inspect and seize data stored on this IS.
+            </li>
+            <li>
+              Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG authorized purpose.
+            </li>
+            <li>
+              This IS includes security measures (e.g., authentication and access controls) to protect USG interests—not for your personal benefit or privacy.
+            </li>
+            <li>
+              Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants.
+            </li>
+          </ul>
+        </div>
+        <div className="px-6 py-4 mt-auto border-t border-slate-600 bg-slate-800 sticky bottom-0 flex justify-center">
+          <button
+            onClick={() => setShowConsentModal(false)}
+            className="px-8 py-2 rounded-md bg-blue-500 text-white font-semibold hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-800"
+          >
+            I Understand
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-800 text-slate-200 flex flex-col">
+      {showConsentModal && <ConsentModal />}
+
       {/* Logos only, no header/nav */}
       <div className="w-full py-8 px-6 flex items-center justify-between">
         <div className="flex-1 flex justify-start">
-          <img src="/src/assets/idsg-logo.png" alt="IDSG Logo" className="h-28 w-auto object-contain" />
+          <img src={idsgLogo} alt="IDSG Logo" className="h-28 w-auto object-contain" />
         </div>
         <div className="flex-1 flex justify-center">
-          <img src="/src/assets/tipjar-logo-cropped.png" alt="TIPJar Logo" className="h-36 w-auto object-contain" />
+          <img src={tipjarLogo} alt="TIPJar Logo" className="h-36 w-auto object-contain" />
         </div>
         <div className="flex-1 flex justify-end">
-          <img src="/src/assets/innovation-logo.png" alt="Innovation Logo" className="h-28 w-auto object-contain" />
+          <img src={innovationLogo} alt="Innovation Logo" className="h-28 w-auto object-contain" />
         </div>
       </div>
 

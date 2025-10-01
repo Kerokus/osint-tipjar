@@ -1,19 +1,34 @@
-FROM node:20-alpine
+# Stage 1: Build the Vite application
+# Use a specific version of Node for reproducibility
+FROM node:20-alpine AS build
 
+# Set the working directory inside the container
 WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json* yarn.lock* pnpm-lock.yaml* ./
-RUN \
-  if [ -f pnpm-lock.yaml ]; then corepack enable && corepack prepare pnpm@latest --activate && pnpm i; \
-  elif [ -f yarn.lock ]; then corepack enable && yarn install; \
-  else npm install; fi
+# Copy package.json and package-lock.json (or yarn.lock)
+COPY package*.json ./
 
-# Copy source
+# Install project dependencies
+RUN npm install
+
+# Copy the rest of the application source code
 COPY . .
 
-# Expose the Vite dev server port (default 5173)
-EXPOSE 5173
 
-# Run dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+RUN npm run build
+
+
+FROM nginx:stable-alpine
+
+
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy a custom Nginx configuration file
+# This is important for single-page applications (SPAs) like those made with React or Vue
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80 to the outside world
+EXPOSE 80
+
+# Command to run Nginx in the foreground
+CMD ["nginx", "-g", "daemon off;"]
