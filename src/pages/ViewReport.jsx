@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 // Helper functions reused from CreateReport.jsx to generate outputs
 function classificationForOutput(val) {
@@ -21,8 +21,8 @@ function cleanSourceType(t) {
   return t.replace(/\s*User$/i, "").trim();
 }
 
-// 1. Accept the new onDeleteSuccess prop
-export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
+// Accept new onEdit prop
+export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,6 +38,12 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
   const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
+
+  // Get current user info from localStorage to check permissions
+  const {isAdmin, userCin} = useMemo(() => ({
+    isAdmin: localStorage.getItem("is_admin") === "true",
+    userCin: localStorage.getItem("cin") || null
+  }), []);
 
   useEffect(() => {
     if (!reportId) return;
@@ -100,12 +106,11 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
         }
       }
       
-      // 2. Call the callback function from the parent to trigger a refresh
       if (onDeleteSuccess) {
         onDeleteSuccess();
       }
       
-      onClose(); // Close the modal on success
+      onClose();
 
     } catch (err) {
       setDeleteError(String(err));
@@ -114,6 +119,8 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
       setShowDeleteConfirm(false);
     }
   };
+  
+  const canEdit = report && (isAdmin || userCin === report.created_by);
 
   const copy = async (text) => navigator.clipboard.writeText(text ?? "");
 
@@ -155,16 +162,20 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
             <div className="flex justify-between items-center pt-4 border-t border-slate-700">
               <button
                 type="button"
-                className="px-4 py-2 text-sm bg-red-700 hover:bg-red-600 text-white font-semibold rounded-md"
+                className="px-4 py-2 text-sm bg-red-700 hover:bg-red-600 text-white font-semibold rounded-md disabled:opacity-50"
                 onClick={() => setShowDeleteConfirm(true)}
+                disabled={!canEdit}
+                title={!canEdit ? "Only the author or an admin can delete" : "Delete Report"}
               >
                 DELETE
               </button>
               {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
               <button
                 type="button"
-                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md"
-                disabled
+                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => onEdit(report)}
+                disabled={!canEdit}
+                title={!canEdit ? "Only the author or an admin can edit" : "Edit Report"}
               >
                 EDIT
               </button>
@@ -205,7 +216,7 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess }) {
     </div>
   );
 }
-
+// Unchanged sub-components
 function ClassificationBanner({ classification }) {
   const styles = { U: "bg-green-600", CUI: "bg-purple-600", CUIREL: "bg-blue-600" };
   return <div className={`text-white text-center font-bold text-sm py-1 rounded ${styles[classification] || 'bg-gray-500'}`}>{classificationForOutput(classification)}</div>;

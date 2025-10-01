@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useState, useCallback } from "react"; // 1. Import useCallback
+import { useEffect, useMemo, useState, useCallback } from "react";
 import ReportSearch from "./ReportSearch";
 import ViewReport from "./ViewReport";
+import EditReport from "./EditReport"; // 1. Import EditReport
 
 export default function ViewAndSearch() {
   const [mode, setMode] = useState("view"); // "view" | "search"
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  
+  // --- State for Modals ---
   const [selectedReportId, setSelectedReportId] = useState(null);
+  const [editingReport, setEditingReport] = useState(null); // 2. Add state for the edit modal
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
   const URL = `${BASE}/reports`;
 
-  // 2. Create a reusable function to fetch reports
   const fetchReports = useCallback(async () => {
     let cancel = false;
     setLoading(true);
@@ -32,18 +35,24 @@ export default function ViewAndSearch() {
       if (!cancel) setLoading(false);
     }
     return () => { cancel = true; };
-  }, [URL, API_KEY]); // Dependencies for the callback
+  }, [URL, API_KEY]);
 
-  // 3. Update the useEffect to use the new fetchReports function
   useEffect(() => {
     if (mode === "view") {
       fetchReports();
     }
   }, [mode, fetchReports]);
 
-  // 4. This new function will be passed to the modal to trigger a refresh
-  const handleDeleteSuccess = () => {
-    fetchReports();
+  // 3. Create handlers for the modals
+  const handleCloseAndRefresh = () => {
+    setSelectedReportId(null);
+    setEditingReport(null);
+    fetchReports(); // Re-fetch data to show changes
+  };
+
+  const handleEdit = (report) => {
+    setSelectedReportId(null); // Close the view modal
+    setEditingReport(report);   // Open the edit modal with the report data
   };
 
   return (
@@ -72,19 +81,28 @@ export default function ViewAndSearch() {
         <ReportSearch onViewReport={setSelectedReportId} />
       )}
       
+      {/* 4. Update the modal rendering logic */}
       {selectedReportId && (
         <ViewReport 
           reportId={selectedReportId} 
           onClose={() => setSelectedReportId(null)} 
-          // 5. Pass the new refresh function as a prop
-          onDeleteSuccess={handleDeleteSuccess}
+          onDeleteSuccess={handleCloseAndRefresh}
+          onEdit={handleEdit} // Pass the new handler
+        />
+      )}
+
+      {editingReport && (
+        <EditReport
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+          onSaveSuccess={handleCloseAndRefresh}
         />
       )}
     </div>
   );
 }
 
-/* ---------- View All table ---------- */
+// --- Unchanged Sub-components below ---
 
 function ViewAllTable({ base, rows, loading, err, onViewReport }) {
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
@@ -99,7 +117,7 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
             <Th>Report Title</Th>
             <Th>Date of Information</Th>
             <Th>Country</Th>
-            <Th>Location</Th> {/* Added */}
+            <Th>Location</Th>
             <Th>Body</Th>
           </tr>
         </thead>
@@ -124,7 +142,7 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information ?? r.report_date)}</Td>
                 <Td>{nz(r.country)}</Td>
-                <Td>{nz(r.location)}</Td> {/* Added */}
+                <Td>{nz(r.location)}</Td>
                 <Td className="max-w-[48ch]">{truncate(nz(r.report_body), 240)}</Td>
               </tr>
             );
@@ -134,9 +152,6 @@ function ViewAllTable({ base, rows, loading, err, onViewReport }) {
     </div>
   );
 }
-
-
-/* ---------- table cells (match UserList.jsx style) ---------- */
 
 function Th({ children }) {
   return (
@@ -149,12 +164,10 @@ function Td({ children, className = "" }) {
   return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
 }
 
-/* ---------- date + utils ---------- */
-
 function fmtDate(d) {
   if (!d) return "—";
   if (typeof d === "string") {
-    const parsed = parseDDMMMYY(d); // handles e.g., "29SEP25"
+    const parsed = parseDDMMMYY(d);
     if (parsed) return parsed.toLocaleDateString();
   }
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
@@ -169,7 +182,7 @@ function parseDDMMMYY(s) {
   const mon = { JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11 }[m[2]];
   if (mon == null) return null;
   const yy = parseInt(m[3], 10);
-  const year = yy >= 50 ? 1900 + yy : 2000 + yy; // 00–49 => 2000s, 50–99 => 1900s
+  const year = yy >= 50 ? 1900 + yy : 2000 + yy;
   return new Date(year, mon, day);
 }
 
