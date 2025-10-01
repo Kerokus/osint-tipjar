@@ -104,7 +104,7 @@ function App() {
             <div className="flex items-center w-full">
               {/* 2. The logo image is larger */}
               <img
-                src="/public/images/tipjar-logo-cropped.png"
+                src="/src/assets/tipjar-logo-cropped.png"
                 alt="TIPJar"
                 className={`${collapsed ? "h-10 w-10 mx-auto" : "h-16 w-auto"} object-contain transition-all duration-200`}
               />
