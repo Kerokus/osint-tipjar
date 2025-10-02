@@ -108,6 +108,7 @@ export default function CreateReport() {
   const [sourceExists, setSourceExists] = useState(false);
   const [matchingSources, setMatchingSources] = useState([]);
   const [showSourceModal, setShowSourceModal] = useState(false);
+  const [originalSourceData, setOriginalSourceData] = useState(null);
 
   // New state for Column 1 under the second blue line
   const [reportBody, setReportBody] = useState("");
@@ -206,7 +207,7 @@ export default function CreateReport() {
     setTimeStr(formatHHmmUTC(now));
   }, []);
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}/country_locations/country_list.json`)
+    fetch(`/country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         setMacoms(Object.keys(data));
@@ -215,7 +216,7 @@ export default function CreateReport() {
       });
   }, []);
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`/country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         const list = (data[macom] || []).slice().sort((a, b) => a.localeCompare(b));
@@ -267,6 +268,7 @@ export default function CreateReport() {
     if (!sourceName.trim()) {
         setSourceExists(false);
         setExistingSourceId(null);
+        setOriginalSourceData(null);
         return;
     }
 
@@ -286,6 +288,10 @@ export default function CreateReport() {
             setSourceType(source.source_platform || "Website");
             setExistingSourceId(source.id);
             setSourceExists(true);
+            setOriginalSourceData({
+                description: source.source_description || "",
+                platform: source.source_platform || "Website"
+            });
             setShowSourceModal(false); // Ensure modal is closed
         } else if (results && results.length > 1) {
             // CASE 2: Multiple matches found
@@ -295,6 +301,7 @@ export default function CreateReport() {
             // CASE 3: No match found (or an error occurred)
             setSourceExists(false);
             setExistingSourceId(null);
+            setOriginalSourceData(null);
         }
         } catch (error) {
         console.error("Error finding source:", error);
@@ -310,6 +317,10 @@ const handleSourceSelect = (source) => {
     setSourceType(source.source_platform || "Website");
     setExistingSourceId(source.id);
     setSourceExists(true);
+    setOriginalSourceData({
+        description: source.source_description || "",
+        platform: source.source_platform || "Website"
+    });
     setShowSourceModal(false); // Close the modal after selection
 };
 
@@ -374,6 +385,7 @@ const handleSourceSelect = (source) => {
     setShowSourceModal(false);
     setMatchingSources([]);
     setOverrideFilter(false); // Reset override
+    setOriginalSourceData(null);
   };
 
   // === Auto-generate Chat Output from current form state ===
@@ -636,15 +648,22 @@ const handleSourceSelect = (source) => {
         let sourceMethod;
 
         if (sourceExists && existingSourceId) {
-          // A. Source exists, prepare a PUT request to update it.
-          sourceMethod = "PUT";
-          sourceEndpoint += `/${existingSourceId}`;
-          sourcePayload = {
-            source_name: sourceName,
-            source_description: sourceDescription,
-            source_platform: sourceType,
-            modified_by: cin, // 'modified_by' for updates
-          };
+          // A. Source exists. Check if an update is needed to avoid unnecessary writes.
+          const descriptionChanged = originalSourceData?.description !== sourceDescription;
+          const platformChanged = originalSourceData?.platform !== sourceType;
+
+          if (descriptionChanged || platformChanged) {
+            // Data has changed, prepare a PUT request to update it.
+            sourceMethod = "PUT";
+            sourceEndpoint += `/${existingSourceId}`;
+            sourcePayload = {
+              source_name: sourceName,
+              source_description: sourceDescription,
+              source_platform: sourceType,
+              modified_by: cin, // 'modified_by' for updates
+            };
+          }
+          // If nothing changed, sourceMethod and sourcePayload remain undefined, skipping the fetch.
         } else {
           // B. Source does not exist, prepare a POST request to create it.
           sourceMethod = "POST";
@@ -656,24 +675,27 @@ const handleSourceSelect = (source) => {
           };
         }
 
-        const sourceRes = await fetch(sourceEndpoint, {
-          method: sourceMethod,
-          headers: headers,
-          body: JSON.stringify(sourcePayload),
-        });
+        // Only perform the fetch if a method was set (i.e., a create or an update is needed)
+        if (sourceMethod) {
+          const sourceRes = await fetch(sourceEndpoint, {
+            method: sourceMethod,
+            headers: headers,
+            body: JSON.stringify(sourcePayload),
+          });
 
-        if (!sourceRes.ok) {
-          const text = await sourceRes.text().catch(() => "");
-          // The report was created, but the source operation failed. Show a specific error.
-          throw new Error(
-            `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
-          );
+          if (!sourceRes.ok) {
+            const text = await sourceRes.text().catch(() => "");
+            // The report was created, but the source operation failed. Show a specific error.
+            throw new Error(
+              `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
+            );
+          }
         }
       }
 
       setSubmitOk(
-        `Report created${reportData?.id ? " with id " + reportData.id : ""}. Source info saved.`
-      );
+        `Report created${reportData?.id ? " with id " + reportData.id : ""}`
+        );
       // Clear form after all operations are successful
       clearForm();
     } catch (err) {

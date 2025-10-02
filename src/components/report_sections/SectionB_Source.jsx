@@ -39,10 +39,8 @@ export default function SectionB_Source({
             <label htmlFor="usper">USPER</label>
           </div>
           <div className="col-span-12 md:col-span-5">
-            <label className="block text-xs">Source Type</label>
-            <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
-              {sourceOptions.map(o => <option key={o}>{o}</option>)}
-            </select>
+            <label className="block text-xs">Source Name:</label>
+            <input value={sourceName} onChange={(e) => setSourceName(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
           </div>
           <div className="col-span-12 md:col-span-6">
             <label className="block text-xs">UID:</label>
@@ -56,8 +54,11 @@ export default function SectionB_Source({
             <label htmlFor="uspi">USPI</label>
           </div>
           <div className="col-span-12 md:col-span-5">
-            <label className="block text-xs">Source Name:</label>
-            <input value={sourceName} onChange={(e) => setSourceName(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
+            <label className="block text-xs">Source Type</label>
+            <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
+              {sourceOptions.map(o => <option key={o}>{o}</option>)}
+            </select>
+            
           </div>
           <div className="col-span-12 md:col-span-6">
             <label className="block text-xs">Article Title:</label>
