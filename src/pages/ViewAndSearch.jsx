@@ -1,41 +1,50 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import ReportSearch from "./ReportSearch";
 import ViewReport from "./ViewReport";
-import EditReport from "./EditReport"; // 1. Import EditReport
+import EditReport from "./EditReport";
 
 export default function ViewAndSearch() {
-  const [mode, setMode] = useState("view"); // "view" | "search"
+  const [mode, setMode] = useState("view");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   
-  // --- State for Modals ---
   const [selectedReportId, setSelectedReportId] = useState(null);
-  const [editingReport, setEditingReport] = useState(null); // 2. Add state for the edit modal
+  const [editingReport, setEditingReport] = useState(null);
+
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [total, setTotal] = useState(0); // This will be an estimated total
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
-  const URL = `${BASE}/reports`;
 
   const fetchReports = useCallback(async () => {
     let cancel = false;
     setLoading(true);
     setErr(null);
+
+    const offset = (page - 1) * limit;
+    const url = `${BASE}/reports?limit=${limit}&offset=${offset}&sort=created_on&order=desc`;
+
     try {
-      const res = await fetch(URL, {
+      const res = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (!cancel) setRows(Array.isArray(data) ? data : []);
+      if (!cancel) {
+        setRows(Array.isArray(data.results) ? data.results : []);
+        setTotal(data.total || 0);
+      }
     } catch (e) {
       if (!cancel) setErr(String(e));
     } finally {
       if (!cancel) setLoading(false);
     }
     return () => { cancel = true; };
-  }, [URL, API_KEY]);
+  }, [BASE, API_KEY, page, limit]);
 
   useEffect(() => {
     if (mode === "view") {
@@ -43,17 +52,21 @@ export default function ViewAndSearch() {
     }
   }, [mode, fetchReports]);
 
-  // 3. Create handlers for the modals
   const handleCloseAndRefresh = () => {
     setSelectedReportId(null);
     setEditingReport(null);
-    fetchReports(); // Re-fetch data to show changes
+    fetchReports();
   };
 
   const handleEdit = (report) => {
-    setSelectedReportId(null); // Close the view modal
-    setEditingReport(report);   // Open the edit modal with the report data
+    setSelectedReportId(null);
+    setEditingReport(report);
   };
+  
+  const offset = (page - 1) * limit;
+  const startItem = rows.length > 0 ? offset + 1 : 0;
+  const endItem = offset + rows.length;
+  const hasNextPage = rows.length === limit;
 
   return (
     <div className="w-full space-y-4">
@@ -61,7 +74,7 @@ export default function ViewAndSearch() {
       <div className="inline-flex rounded-lg border border-slate-600 overflow-hidden">
         <button
           className={`px-4 py-2 text-sm ${mode === "view" ? "bg-slate-700 text-slate-100" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
-          onClick={() => setMode("view")}
+          onClick={() => { setPage(1); setTotal(0); setMode("view"); }}
           aria-pressed={mode === "view"}
         >
           View All
@@ -76,18 +89,28 @@ export default function ViewAndSearch() {
       </div>
 
       {mode === "view" ? (
-        <ViewAllTable base={BASE} rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
+        <div className="space-y-4">
+          <PaginationHeader 
+            start={startItem}
+            end={endItem}
+            total={total}
+            page={page}
+            hasNextPage={hasNextPage}
+            onPageChange={setPage}
+            loading={loading}
+          />
+          <ViewAllTable rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
+        </div>
       ) : (
         <ReportSearch onViewReport={setSelectedReportId} />
       )}
       
-      {/* 4. Update the modal rendering logic */}
       {selectedReportId && (
         <ViewReport 
           reportId={selectedReportId} 
           onClose={() => setSelectedReportId(null)} 
           onDeleteSuccess={handleCloseAndRefresh}
-          onEdit={handleEdit} // Pass the new handler
+          onEdit={handleEdit}
         />
       )}
 
@@ -102,9 +125,37 @@ export default function ViewAndSearch() {
   );
 }
 
-// --- Unchanged Sub-components below ---
+function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
+  const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
+  
+  if (start === 0 && end === 0) {
+    return null;
+  }
 
-function ViewAllTable({ base, rows, loading, err, onViewReport }) {
+  return (
+    <div className="flex justify-between items-center text-sm text-slate-400">
+      <span>{showingText}</span>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onPageChange(p => p - 1)}
+          disabled={page === 1 || loading}
+          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          &larr; Previous
+        </button>
+        <button
+          onClick={() => onPageChange(p => p + 1)}
+          disabled={!hasNextPage || loading}
+          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next &rarr;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ViewAllTable({ rows, loading, err, onViewReport }) {
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
   if (err) return <div className="text-red-400">Error: {err}</div>;
   if (!rows?.length) return <div className="text-slate-300">No reports.</div>;

@@ -55,7 +55,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
   // --- NEW: Fetch MACOM/Country lists on mount ---
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         setMacoms(Object.keys(data));
@@ -68,7 +68,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
   // --- NEW: Update country list when MACOM changes ---
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         const list = (data[formData.macom] || []).slice().sort();

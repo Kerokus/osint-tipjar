@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
 import SectionA from "../components/report_sections/SectionA_Metadata";
 import SectionB from "../components/report_sections/SectionB_Source";
-import { findSourceByName, getDirtyWords } from "../components/supportFunctions";
+import { findSourceByName, getDirtyWords, usperCheck, classifyImage } from "../components/supportFunctions";
 
 // Helper functions that were previously in SectionA
 function formatDDMMMYY(dateUtc) {
@@ -15,18 +15,6 @@ function formatHHmmUTC(dateUtc) {
   const h = dateUtc.getUTCHours().toString().padStart(2, "0");
   const m = dateUtc.getUTCMinutes().toString().padStart(2, "0");
   return `${h}${m}`;
-}
-async function loadSql() {
-  const initSqlJs = (await import("sql.js")).default;
-  return await initSqlJs({ locateFile: (f) => `/vendor/${f}` });
-}
-async function openCountryDb(country) {
-  const encoded = encodeURIComponent(`${country}.db`);
-  const res = await fetch(`${import.meta.env.BASE_URL}country_locations/${encoded}`);
-  if (!res.ok) throw new Error(`DB fetch failed: ${res.status}`);
-  const buf = await res.arrayBuffer();
-  const SQL = await loadSql();
-  return new SQL.Database(new Uint8Array(buf));
 }
 
 // === New helpers for Chat Output auto-generation ===
@@ -78,7 +66,6 @@ export default function CreateReport() {
   const rank = { U: 0, CUI: 1, CUIREL: 2 }; // U < CUI < CUI//REL TO USA, FVEY
   const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
 
-  // All state is now "lifted" to this parent component
   // State for Section A
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
@@ -92,6 +79,8 @@ export default function CreateReport() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imgFile, setImgFile] = useState(null);
+  const [originalImgFile, setOriginalImgFile] = useState(null); 
+  const [imageClass, setImageClass] = useState("U"); 
 
   // State for Section B
   const [usper, setUsper] = useState(false);
@@ -108,17 +97,18 @@ export default function CreateReport() {
   const [sourceExists, setSourceExists] = useState(false);
   const [matchingSources, setMatchingSources] = useState([]);
   const [showSourceModal, setShowSourceModal] = useState(false);
+  const [originalSourceData, setOriginalSourceData] = useState(null);
+  const [treatAsNewSource, setTreatAsNewSource] = useState(false); 
 
-  // New state for Column 1 under the second blue line
+  // State for Collector Comments
   const [reportBody, setReportBody] = useState("");
   const [collectorClass, setCollectorClass] = useState("U");
   const [sourceDescription, setSourceDescription] = useState("");
   const [additionalComment, setAdditionalComment] = useState("");
 
-  // New state for Column 2
+  // State for Report Output fields
   const [displayName, setDisplayName] = useState("");
-  // --- UPDATED CHAT CHANNEL STATE ---
-  const [chatChannel, setChatChannel] = useState(chatChannels["U"]); // Default to U channel
+  const [chatChannel, setChatChannel] = useState(chatChannels["U"]); 
   const [chatOutput, setChatOutput] = useState("");
   const [reportOutput, setReportOutput] = useState("");
   const [citationOutput, setCitationOutput] = useState("");
@@ -147,6 +137,40 @@ export default function CreateReport() {
     setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
   }, [overallClass]);
 
+  const handleSetImgFile = (file) => {
+    setImgFile(file);
+    if (file) {
+      setOriginalImgFile(file); // Save the original for re-classification
+      setImageClass("U"); // Reset classification when a new image is uploaded
+    } else {
+      setOriginalImgFile(null); // Clear original if image is removed
+    }
+  };
+
+  const handleClassifyImage = async (classification) => {
+    console.log("handleClassifyImage called with:", classification);
+    console.log("Current originalImgFile state:", originalImgFile);
+    if (!originalImgFile) {
+      alert("Please upload an image first.");
+      return;
+    }
+
+    try {
+      // Always use the clean, original file to apply the banner
+      const classifiedFile = await classifyImage(originalImgFile, classification);
+      
+      // Update the state with the newly generated file
+      setImgFile(classifiedFile); 
+      
+      // Update the image's classification and the overall report classification
+      setImageClass(classification);
+      setOverallClass((prev) => maxClass(prev, collectorClass, classification));
+    } catch (error) {
+      console.error("Failed to classify image:", error);
+      alert("An error occurred while adding the classification banner.");
+    }
+  };
+
 
   // Fetch dirty words on component mount
   useEffect(() => {
@@ -156,6 +180,13 @@ export default function CreateReport() {
     }
     fetchWords();
   }, []);
+
+  // Effect to automatically set USPI if (USPER) is in the report body
+  useEffect(() => {
+    if (usperCheck(reportBody)) {
+      setUspi(true);
+    }
+  }, [reportBody]);
 
   // Effect to check for dirty words in the report body and apply classification logic
   useEffect(() => {
@@ -189,8 +220,8 @@ export default function CreateReport() {
   }, [reportBody, dirtyWords, overrideFilter, maxClass]);
 
   useEffect(() => {
-    setOverallClass((prev) => maxClass(prev, collectorClass));
-  }, [collectorClass, maxClass]);
+    setOverallClass((prev) => maxClass(prev, collectorClass, imageClass));
+  }, [collectorClass, imageClass, maxClass]);
 
   //If the user selects "USPER" it will remove anything in the Source Description field.
   useEffect(() => {
@@ -206,7 +237,7 @@ export default function CreateReport() {
     setTimeStr(formatHHmmUTC(now));
   }, []);
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}/country_locations/country_list.json`)
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         setMacoms(Object.keys(data));
@@ -215,7 +246,7 @@ export default function CreateReport() {
       });
   }, []);
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
       .then((data) => {
         const list = (data[macom] || []).slice().sort((a, b) => a.localeCompare(b));
@@ -225,6 +256,7 @@ export default function CreateReport() {
   }, [macom]);
 
   const debounceRef = useRef(null);
+  // --- REFACTORED: Location search now uses the API ---
   useEffect(() => {
     if (!country || !location) {
       setResults([]);
@@ -233,33 +265,47 @@ export default function CreateReport() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      let db;
       try {
-        db = await openCountryDb(country);
-        const stmt = db.prepare(`
-          SELECT l.location as location, l.mgrs as mgrs, p.province as province
-          FROM Locations l
-          JOIN Provinces p ON l.province_id = p.id
-          WHERE lower(' ' || l.location || ' ') LIKE '% ' || lower(?) || ' %'
-          ORDER BY l.location ASC;
-        `);
-        const rows = [];
-        stmt.bind([location]);
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        setResults(rows);
-      } catch (err) {
-        console.error("Database error:", err);
-        setResults([]);
-      } finally {
-        if (db) {
-          db.close();
+        const API_URL = import.meta.env.VITE_API_URL;
+        const API_KEY = import.meta.env.VITE_API_KEY;
+
+        if (!API_URL || !API_KEY) {
+          throw new Error("API URL or Key is missing from environment variables.");
         }
+
+        // Use URLSearchParams to handle encoding of query parameters correctly
+        const params = new URLSearchParams({
+          country: country,
+          location: location,
+        });
+        const endpoint = `${String(API_URL).replace(/\/+$/, "")}/countries?${params.toString()}`;
+
+        const res = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+                'x-api-key': API_KEY
+            }
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Server returned an error");
+          throw new Error(`Location search failed: ${res.status} ${errorText}`);
+        }
+
+        const data = await res.json();
+        setResults(data);
+
+      } catch (err) {
+        console.error("Location search error:", err);
+        setResults([]); // Clear results on error
+      } finally {
         setLoading(false);
       }
-    }, 800);
+    }, 800); // 800ms debounce
+    
     return () => clearTimeout(debounceRef.current);
   }, [country, location]);
+
 
   const sourceSearchDebounceRef = useRef(null);
     useEffect(() => {
@@ -267,6 +313,8 @@ export default function CreateReport() {
     if (!sourceName.trim()) {
         setSourceExists(false);
         setExistingSourceId(null);
+        setOriginalSourceData(null);
+        setTreatAsNewSource(false); // <<< RESET STATE
         return;
     }
 
@@ -286,6 +334,11 @@ export default function CreateReport() {
             setSourceType(source.source_platform || "Website");
             setExistingSourceId(source.id);
             setSourceExists(true);
+            setTreatAsNewSource(false); // <<< RESET STATE
+            setOriginalSourceData({
+                description: source.source_description || "",
+                platform: source.source_platform || "Website"
+            });
             setShowSourceModal(false); // Ensure modal is closed
         } else if (results && results.length > 1) {
             // CASE 2: Multiple matches found
@@ -295,6 +348,8 @@ export default function CreateReport() {
             // CASE 3: No match found (or an error occurred)
             setSourceExists(false);
             setExistingSourceId(null);
+            setOriginalSourceData(null);
+            setTreatAsNewSource(false); // <<< RESET STATE
         }
         } catch (error) {
         console.error("Error finding source:", error);
@@ -310,17 +365,22 @@ const handleSourceSelect = (source) => {
     setSourceType(source.source_platform || "Website");
     setExistingSourceId(source.id);
     setSourceExists(true);
+    setTreatAsNewSource(false); // <<< RESET STATE
+    setOriginalSourceData({
+        description: source.source_description || "",
+        platform: source.source_platform || "Website"
+    });
     setShowSourceModal(false); // Close the modal after selection
 };
 
   const onDrop = (e) => {
     e.preventDefault();
     const f = e.dataTransfer.files?.[0];
-    if (f) setImgFile(f);
+    if (f) handleSetImgFile(f);
   };
   const onChoose = (e) => {
     const f = e.target.files?.[0];
-    if (f) setImgFile(f);
+    if (f) handleSetImgFile(f);
   };
 
   // Copy helper
@@ -348,6 +408,8 @@ const handleSourceSelect = (source) => {
     setMgrs("");
     setResults([]);
     setImgFile(null);
+    setOriginalImgFile(null);
+    setImageClass("U");
     // Section B state reset
     setUsper(false);
     setUspi(false);
@@ -374,6 +436,8 @@ const handleSourceSelect = (source) => {
     setShowSourceModal(false);
     setMatchingSources([]);
     setOverrideFilter(false); // Reset override
+    setOriginalSourceData(null);
+    setTreatAsNewSource(false); // <<< RESET STATE
   };
 
   // === Auto-generate Chat Output from current form state ===
@@ -389,8 +453,9 @@ const handleSourceSelect = (source) => {
     const body = reportBody || "";
     const cinDisp = cin || "";
     const comment = sourceDescription || "";
+    const adtlComment = additionalComment || "";
 
-    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} (${oc})`;
+    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} ${adtlComment} (${oc})`;
     setChatOutput(chat.trim());
     setChatMessageSent(false); // Reset sent status if underlying data changes
   }, [
@@ -405,7 +470,8 @@ const handleSourceSelect = (source) => {
     reportBody,
     cin,
     collectorClass,
-    sourceDescription
+    sourceDescription,
+    additionalComment
   ]);
   // Auto-generate Report Output from current form state ===
   useEffect(() => {
@@ -419,8 +485,9 @@ const handleSourceSelect = (source) => {
     const body = reportBody || "";
     const mgrsDisp = mgrs || "";
     const desc = sourceDescription || "";
+    const adtlComment = additionalComment || "";
 
-    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) COLLECTOR COMMENT: ${desc}`;
+    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) COLLECTOR COMMENT: ${desc} ${adtlComment}`;
     setReportOutput(report.trim());
   }, [
     overallClass,
@@ -433,7 +500,8 @@ const handleSourceSelect = (source) => {
     reportBody,
     mgrs,
     sourceDescription,
-    didWhat
+    didWhat,
+    additionalComment
   ]);
 
   // Auto-generate Citation Output from current form state ===
@@ -450,9 +518,9 @@ const handleSourceSelect = (source) => {
 
     let citation;
     if (didWhat === "published") {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+      citation = `(U) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
     } else {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+      citation = `(U) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
     }
     setCitationOutput(citation.trim());
   }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
@@ -472,19 +540,17 @@ const handleSourceSelect = (source) => {
     setSendingChat(true);
 
     try {
-      const API_URL = "https://chatsurfer.nro.mil/api/chatserver/message";
-      const API_KEY = import.meta.env.VITE_CHATSURFER_API_KEY;
+      const API_URL = "https://3v8o0b4ojc.execute-api.us-gov-west-1.amazonaws.com/send/message";
+      const CHAT_API_KEY = import.meta.env.VITE_CHATSURFER_API_KEY;
       
-      if (!API_KEY) {
+      if (!CHAT_API_KEY) {
         throw new Error("ChatSurfer API Key is missing from environment variables.");
       }
       
       const payload = {
-        // The classification format "UNCLASSIFIED//FOUO" from the example may
-        // differ from the form's logic. Using the form's classification for now.
-        classification: "UNCLASSIFIED//FOUO",
+        classification: "UNCLASSIFIED",
         message: chatOutput,
-        domainId: "chatsurferxmppunclass", // this is based on ChatSurfer's docs
+        domainId: "chatsurferxmppunclass", // <---- I got this from the chatsurfer docs https://chatsurfer.nro.mil/apidocs#tag/(U)-Chat-Messages
         nickName: displayName,
         roomName: chatChannel
       };
@@ -493,7 +559,7 @@ const handleSourceSelect = (source) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "api-key": API_KEY, 
+          "x-api-key": CHAT_API_KEY, 
         },
         body: JSON.stringify(payload),
       });
@@ -635,18 +701,26 @@ const handleSourceSelect = (source) => {
         let sourcePayload;
         let sourceMethod;
 
-        if (sourceExists && existingSourceId) {
-          // A. Source exists, prepare a PUT request to update it.
-          sourceMethod = "PUT";
-          sourceEndpoint += `/${existingSourceId}`;
-          sourcePayload = {
-            source_name: sourceName,
-            source_description: sourceDescription,
-            source_platform: sourceType,
-            modified_by: cin, // 'modified_by' for updates
-          };
+        // <<< MODIFIED LOGIC
+        if (sourceExists && existingSourceId && !treatAsNewSource) {
+          // A. Source exists AND we are NOT treating it as new. Check if an update is needed.
+          const descriptionChanged = originalSourceData?.description !== sourceDescription;
+          const platformChanged = originalSourceData?.platform !== sourceType;
+
+          if (descriptionChanged || platformChanged) {
+            // Data has changed, prepare a PUT request to update it.
+            sourceMethod = "PUT";
+            sourceEndpoint += `/${existingSourceId}`;
+            sourcePayload = {
+              source_name: sourceName,
+              source_description: sourceDescription,
+              source_platform: sourceType,
+              modified_by: cin, // 'modified_by' for updates
+            };
+          }
+          // If nothing changed, sourceMethod and sourcePayload remain undefined, skipping the fetch.
         } else {
-          // B. Source does not exist, prepare a POST request to create it.
+          // B. Source does not exist OR we are treating it as a new one. Prepare a POST request.
           sourceMethod = "POST";
           sourcePayload = {
             source_name: sourceName,
@@ -656,24 +730,27 @@ const handleSourceSelect = (source) => {
           };
         }
 
-        const sourceRes = await fetch(sourceEndpoint, {
-          method: sourceMethod,
-          headers: headers,
-          body: JSON.stringify(sourcePayload),
-        });
+        // Only perform the fetch if a method was set (i.e., a create or an update is needed)
+        if (sourceMethod) {
+          const sourceRes = await fetch(sourceEndpoint, {
+            method: sourceMethod,
+            headers: headers,
+            body: JSON.stringify(sourcePayload),
+          });
 
-        if (!sourceRes.ok) {
-          const text = await sourceRes.text().catch(() => "");
-          // The report was created, but the source operation failed. Show a specific error.
-          throw new Error(
-            `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
-          );
+          if (!sourceRes.ok) {
+            const text = await sourceRes.text().catch(() => "");
+            // The report was created, but the source operation failed. Show a specific error.
+            throw new Error(
+              `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
+            );
+          }
         }
       }
 
       setSubmitOk(
-        `Report created${reportData?.id ? " with id " + reportData.id : ""}. Source info saved.`
-      );
+        `Report created${reportData?.id ? " with id " + reportData.id : ""}`
+        );
       // Clear form after all operations are successful
       clearForm();
     } catch (err) {
@@ -731,12 +808,14 @@ const handleSourceSelect = (source) => {
             onClick={() => setShowSourceModal(false)}
             className="mt-6 w-full h-9 rounded-md bg-slate-700 text-white font-bold"
             >
-            Cancel
+            Create New
             </button>
         </div>
         </div>
     )
     );
+  
+  const isUspiLocked = usperCheck(reportBody);  
 
   return (
     <div>
@@ -765,10 +844,11 @@ const handleSourceSelect = (source) => {
         results={results}
         loading={loading}
         imgFile={imgFile}
-        setImgFile={setImgFile}
+        setImgFile={handleSetImgFile}
         onDrop={onDrop}
         onChoose={onChoose}
         clearForm={clearForm}
+        onClassifyImage={handleClassifyImage}
       />
       <hr className="my-6 w-full border-sky-300" />
       {/* Pass all necessary state and functions down to SectionB as props */}
@@ -777,6 +857,7 @@ const handleSourceSelect = (source) => {
         setUsper={setUsper}
         uspi={uspi}
         setUspi={setUspi}
+        isUspiLocked={isUspiLocked}
         sourceType={sourceType}
         setSourceType={setSourceType}
         sourceName={sourceName}
@@ -843,8 +924,23 @@ const handleSourceSelect = (source) => {
             </div>
 
             <div className="mt-2">
+              {/* <<< MODIFIED JSX FOR CHECKBOX */}
               <div className="flex justify-between items-center mb-1">
-                <label className="text-xs">Source Description:</label>
+                <div className="flex items-center gap-2">
+                    <label className="text-xs">Source Description:</label>
+                    {sourceExists && (
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="newSourceCheckbox"
+                                checked={treatAsNewSource}
+                                onChange={(e) => setTreatAsNewSource(e.target.checked)}
+                                className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                            />
+                            <label htmlFor="newSourceCheckbox" className="ml-2 text-xs font-medium text-slate-300">New Source</label>
+                        </div>
+                    )}
+                </div>
                 {sourceBadge}
               </div>
               <textarea

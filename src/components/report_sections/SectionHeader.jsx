@@ -38,7 +38,7 @@ export default function SectionHeader({ initialValue = "U", onChange }) {
       case "U":
         return "bg-green-600 text-white";
       case "CUI":
-        return "bg-green-700 text-white"; // slightly different green
+        return "bg-purple-700 text-white"; // slightly different green
       case "CUIREL":
         return "bg-purple-700 text-white";
       default:

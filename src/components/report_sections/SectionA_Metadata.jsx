@@ -13,7 +13,7 @@ export default function SectionA_Metadata({
   mgrs, setMgrs,
   results, loading,
   imgFile, setImgFile,
-  onDrop, onChoose, clearForm
+  onDrop, onChoose, clearForm, onClassifyImage
 }) {
   // This state is purely for the UI of this component, so it stays here.
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -50,7 +50,7 @@ export default function SectionA_Metadata({
         </div>
         <div className="col-span-12 md:col-span-3 flex gap-2 items-end">
           <button onClick={clearForm} className="flex-1 h-9 rounded-md bg-slate-800 border border-red-500 text-red-500">Clear Form</button>
-          <button className="flex-1 h-9 rounded-md bg-slate-800 border border-blue-400 text-blue-400">Recall Last</button>
+          
         </div>
         {/* Image uploader spans 2 rows */}
         <div className="col-span-12 md:col-span-4 md:row-span-2 flex flex-col min-w-0">
@@ -86,6 +86,40 @@ export default function SectionA_Metadata({
                 >
                   Preview
                 </button>
+
+                {/* === NEW: Classification Buttons === */}
+                <div className="absolute top-2 left-2 z-20 flex flex-col items-start gap-2">
+                  <span className="text-xs font-bold bg-slate-900/80 px-2 py-1 rounded text-white">CLASSIFY IMAGE:</span>
+                  <button
+                    onClick={() => {
+                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      onClassifyImage('U');
+                    }}
+                    className="bg-green-600 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"
+                  >
+                    Unclassified
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      onClassifyImage('CUI');
+                    }}
+                    className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"
+                  >
+                    CUI
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      onClassifyImage('CUIREL');
+                    }}
+                    className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"
+                  >
+                    CUI//REL
+                  </button>
+                </div>
+                {/* === END NEW SECTION === */}
+
               </>
             ) : (
               <label className="cursor-pointer bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">

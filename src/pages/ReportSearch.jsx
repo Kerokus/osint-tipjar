@@ -78,8 +78,6 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     setTotal(0);
   }
 
-  // --- Data Fetching Effect ---
-
   useEffect(() => {
     // Do not run effect if no search has been submitted
     if (!activeQuery) {
@@ -94,8 +92,6 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
       const offset = (page - 1) * limit;
       const urlParams = new URLSearchParams();
-
-      // Append non-empty parameters from the active query
       for (const key in activeQuery) {
         if (activeQuery[key]) {
           urlParams.append(key, activeQuery[key]);
@@ -111,17 +107,10 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
         });
 
         if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
-        
         const data = await res.json();
         if (cancel) return;
-
-        setResults(Array.isArray(data) ? data : []);
-
-        // Estimate total for the "Showing X-Y of Z" message.
-        // If the number of results returned is less than the limit, we're on the last page.
-        if (data.length < limit) {
-          setTotal(offset + data.length);
-        }
+        setResults(Array.isArray(data.results) ? data.results : []);
+        setTotal(data.total || 0);
       } catch (e) {
         if (!cancel) setError(String(e));
       } finally {
@@ -133,9 +122,6 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
     return () => { cancel = true; };
   }, [activeQuery, page, limit, BASE, API_KEY]);
-
-
-  // --- Render Logic ---
   
   const offset = (page - 1) * limit;
   const startItem = results.length > 0 ? offset + 1 : 0;

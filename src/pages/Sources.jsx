@@ -100,14 +100,9 @@ export default function Sources() {
       
       const data = await res.json();
       if (cancel) return;
+      setSources(Array.isArray(data.data) ? data.data : []);
+      setTotal(data.total || 0);
 
-      setSources(Array.isArray(data) ? data : []);
-
-      if (data.length < limit) {
-        setTotal(offset + data.length);
-      } else {
-        setTotal(0); 
-      }
     } catch (e) {
       if (!cancel) setError(String(e));
     } finally {

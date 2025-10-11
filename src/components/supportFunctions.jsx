@@ -1,4 +1,4 @@
-// src/supportFunctions.jsx
+import * as fabric from 'fabric';
 
 /**
  * Searches for sources by an exact name via API call.
@@ -44,8 +44,8 @@ export async function findSourceByName(sourceName) {
       throw new Error(`API request failed: ${response.status} ${errorText}`);
     }
 
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const result = await response.json();
+    return Array.isArray(result.data) ? result.data : [];
   } catch (error) {
     console.error("Failed to fetch source:", error);
     return null; // Return null to indicate a fetch error occurred
@@ -80,4 +80,136 @@ export async function getDirtyWords() {
     console.error("Failed to fetch dirty words:", error);
     return []; // Return empty array on error to prevent crashes
   }
+}
+
+/**
+ * Checks for the exact phrase "(USPER)" in a given string.
+ * @param {string} text The text to search within.
+ * @returns {boolean} True if the exact phrase is found, otherwise false.
+ */
+export function usperCheck(text) {
+  if (typeof text !== 'string') {
+    return false;
+  }
+  return text.includes("(USPER)");
+}
+
+/**
+ * Adds a classification banner to an image using Fabric.js.
+ * @param {File} imageFile The original image file to modify.
+ * @param {'U' | 'CUI' | 'CUIREL'} classification The classification level.
+ * @returns {Promise<File>} A promise that resolves to a new File object with the banner baked in.
+ */
+// In supportFunctions.jsx
+
+export async function classifyImage(imageFile, classification) {
+  return new Promise((resolve, reject) => {
+    // When using `import * as`, the actual library is often on the .default property.
+    const fabricLib = fabric.default || fabric;
+    const reader = new FileReader();
+
+    // This function will run once the FileReader has the image as a Data URL
+    reader.onload = (event) => {
+      const imageUrl = event.target.result;
+
+      // 1. Create a standard HTML Image element in memory
+      const htmlImageElement = new window.Image();
+      htmlImageElement.crossOrigin = "anonymous";
+
+      // 2. Set up the event handler for when the browser successfully loads the image
+      htmlImageElement.onload = () => {
+        try {
+          // 3. The browser has loaded the image; now create a Fabric image from the HTML element
+          const fabricImage = new fabricLib.Image(htmlImageElement);
+
+          const canvas = new fabricLib.StaticCanvas(null, {
+            width: fabricImage.width,
+            height: fabricImage.height,
+          });
+
+          canvas.add(fabricImage);
+
+          let bannerConfig;
+          switch (classification) {
+            case 'CUI':
+              bannerConfig = { text: 'CUI', bgColor: '#581c87' };
+              break;
+            case 'CUIREL':
+              bannerConfig = { text: 'CUI//REL TO USA, FVEY', bgColor: '#581c87' };
+              break;
+            default:
+              bannerConfig = { text: 'U', bgColor: '#16a34a' };
+              break;
+          }
+
+          const PADDING = 8;
+          const FONT_SIZE = 12;
+
+          const text = new fabricLib.Textbox(bannerConfig.text, {
+            fontFamily: 'Arial',
+            fontSize: FONT_SIZE,
+            fontWeight: 'bold',
+            fill: 'white',
+            textAlign: 'center',
+            width: classification === 'CUIREL' ? 150 : 100,
+            originX: 'center',
+            originY: 'center',
+          });
+
+          const rect = new fabricLib.Rect({
+            width: text.width + PADDING * 2,
+            height: text.height + PADDING * 2,
+            fill: bannerConfig.bgColor,
+            stroke: 'black',
+            strokeWidth: 1.5,
+            originX: 'center',
+            originY: 'center',
+          });
+
+          const group = new fabricLib.Group([rect, text], {
+            originX: 'right',
+            originY: 'top',
+            left: fabricImage.width - PADDING,
+            top: PADDING,
+          });
+          
+          canvas.add(group);
+          canvas.renderAll();
+
+          canvas.getElement().toBlob(
+            (blob) => {
+              if (!blob) {
+                return reject(new Error('Canvas to Blob conversion failed.'));
+              }
+              const newFile = new File([blob], imageFile.name, {
+                type: blob.type,
+                lastModified: Date.now(),
+              });
+              resolve(newFile);
+            },
+            imageFile.type === 'image/jpeg' ? 'image/jpeg' : 'image/png'
+          );
+        } catch (err) {
+            // This will catch any errors from Fabric's side
+            console.error("Error during Fabric.js canvas processing:", err);
+            reject(err);
+        }
+      };
+
+      // Set up a handler for if the browser ITSELF fails to load the image
+      htmlImageElement.onerror = () => {
+        console.error("Browser failed to load image from Data URL.");
+        reject(new Error("The browser could not load the image."));
+      };
+
+      // 4. Finally, set the image source to start the loading process
+      htmlImageElement.src = imageUrl;
+    };
+
+    // Handle errors from the FileReader itself
+    reader.onerror = (error) => reject(error);
+
+    // Start the process by reading the file
+    reader.readAsDataURL(imageFile);
+  });
 }

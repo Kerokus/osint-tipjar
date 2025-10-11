@@ -5,6 +5,7 @@ import CreateReport from "./pages/CreateReport";
 import Sources from "./pages/Sources";
 import Login from "./pages/Login";
 import Settings from "./pages/Settings";
+import tipjarLogo from "./assets/tipjar-logo-cropped.png";
 
 function App() {
   const [activeTab, setActiveTab] = useState("newReport");
@@ -104,7 +105,7 @@ function App() {
             <div className="flex items-center w-full">
               {/* 2. The logo image is larger */}
               <img
-                src="/src/assets/tipjar-logo-cropped.png"
+                src={tipjarLogo}
                 alt="TIPJar"
                 className={`${collapsed ? "h-10 w-10 mx-auto" : "h-16 w-auto"} object-contain transition-all duration-200`}
               />
@@ -161,7 +162,7 @@ function App() {
           <aside className="relative z-50 w-72 max-w-[80%] bg-slate-900 border-r border-slate-700 p-3 flex flex-col">
             <div className="h-12 flex items-center justify-between border-b border-slate-700">
               <img
-                src="/public/images/tipjar-logo-cropped.png"
+                src={tipjarLogo}
                 alt="TIPJar"
                 className="h-8 w-auto object-contain"
               />
