@@ -4,7 +4,7 @@ import SectionA from "../components/report_sections/SectionA_Metadata";
 import SectionB from "../components/report_sections/SectionB_Source";
 import { findSourceByName, getDirtyWords, usperCheck, classifyImage } from "../components/supportFunctions";
 
-// Helper functions that were previously in SectionA
+// Helper functions for SectionA
 function formatDDMMMYY(dateUtc) {
   const d = dateUtc.getUTCDate().toString().padStart(2, "0");
   const mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateUtc.getUTCMonth()];
@@ -17,7 +17,7 @@ function formatHHmmUTC(dateUtc) {
   return `${h}${m}`;
 }
 
-// === New helpers for Chat Output auto-generation ===
+// Helpers for Chat Output auto-generation
 function classificationForOutput(val) {
   if (val === "U") return "U";
   if (val === "CUI") return "CUI";
@@ -31,7 +31,6 @@ function makeDTG(dateStr, timeStr) {
   const DD = dateStr.slice(0, 2);
   const MMM = dateStr.slice(2, 5).toUpperCase();
   const YY = dateStr.slice(5, 7);
-  // Assume 2000s for YY; preserves existing behavior of dateStr
   const HH = timeStr.slice(0, 2);
   const MM = timeStr.slice(2, 4);
   return `${DD}${HH}${MM}Z${MMM}${YY}`;
@@ -53,8 +52,9 @@ function escapeRegex(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Main function
 export default function CreateReport() {
-  // --- MAPPING FOR CHAT CHANNELS ---
+  
   const chatChannels = {
     "U" : "513th_mibt_osint",
     "CUI" : "513th_mibt_osint_cui",
@@ -132,7 +132,7 @@ export default function CreateReport() {
     setDisplayName(localStorage.getItem("display_name") || "");
   }, []);
 
-  // --- NEW EFFECT TO AUTO-SET CHANNEL ---
+  // UseEffect to auto-select channel
   useEffect(() => {
     setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
   }, [overallClass]);
@@ -140,8 +140,8 @@ export default function CreateReport() {
   const handleSetImgFile = (file) => {
     setImgFile(file);
     if (file) {
-      setOriginalImgFile(file); // Save the original for re-classification
-      setImageClass("U"); // Reset classification when a new image is uploaded
+      setOriginalImgFile(file); 
+      setImageClass("U"); 
     } else {
       setOriginalImgFile(null); // Clear original if image is removed
     }
@@ -156,13 +156,8 @@ export default function CreateReport() {
     }
 
     try {
-      // Always use the clean, original file to apply the banner
       const classifiedFile = await classifyImage(originalImgFile, classification);
-      
-      // Update the state with the newly generated file
       setImgFile(classifiedFile); 
-      
-      // Update the image's classification and the overall report classification
       setImageClass(classification);
       setOverallClass((prev) => maxClass(prev, collectorClass, classification));
     } catch (error) {
@@ -170,7 +165,6 @@ export default function CreateReport() {
       alert("An error occurred while adding the classification banner.");
     }
   };
-
 
   // Fetch dirty words on component mount
   useEffect(() => {
@@ -180,13 +174,6 @@ export default function CreateReport() {
     }
     fetchWords();
   }, []);
-
-  // Effect to automatically set USPI if (USPER) is in the report body
-  useEffect(() => {
-    if (usperCheck(reportBody)) {
-      setUspi(true);
-    }
-  }, [reportBody]);
 
   // Effect to check for dirty words in the report body and apply classification logic
   useEffect(() => {
@@ -230,6 +217,19 @@ export default function CreateReport() {
     }
   }, [usper]);
 
+  // Effect to automatically set USPI if (USPER) is in the report body
+  useEffect(() => {
+    if (usperCheck(reportBody)) {
+      setUspi(true);
+    }
+  }, [reportBody]);
+
+/**
+ * Okay this next section isn't the cleanest. I had wanted to make every aspect of this 
+ * page its own component, but I'm not great at passing props and I messed it up
+ * So I ended up just moving the rest into this page. Good luck.
+ */
+
   // Logic/effects that were previously in SectionA
   useEffect(() => {
     const now = new Date();
@@ -256,7 +256,6 @@ export default function CreateReport() {
   }, [macom]);
 
   const debounceRef = useRef(null);
-  // --- REFACTORED: Location search now uses the API ---
   useEffect(() => {
     if (!country || !location) {
       setResults([]);
@@ -314,7 +313,7 @@ export default function CreateReport() {
         setSourceExists(false);
         setExistingSourceId(null);
         setOriginalSourceData(null);
-        setTreatAsNewSource(false); // <<< RESET STATE
+        setTreatAsNewSource(false); 
         return;
     }
 
@@ -383,7 +382,7 @@ const handleSourceSelect = (source) => {
     if (f) handleSetImgFile(f);
   };
 
-  // Copy helper
+  // Copy to clipboard helper
   const copy = async (text) => {
     try {
       await navigator.clipboard.writeText(text ?? "");
@@ -395,11 +394,10 @@ const handleSourceSelect = (source) => {
   //helper function for Citation Report
   function cleanSourceType(t) {
     if (!t) return "";
-    // Trim the string FIRST, then perform the replacement.
     return t.trim().replace(/\s*User$/i, "");
   }
 
-  // The clearForm function now resets state for all sections
+  // State reset when the user hits the "Clear Form" button
   const clearForm = () => {
     // Section A state reset
     setMacom("CENTCOM");
@@ -419,28 +417,28 @@ const handleSourceSelect = (source) => {
     setUid("");
     setArticleTitle("N/A");
     setArticleAuthor("N/A");
-    // Column 1 new state reset
+    // Column 1 state reset
     setReportBody("");
     setCollectorClass("U");
     setSourceDescription("");
     setAdditionalComment("");
     setOverallClass("U");
-    // Column 2 new state reset
-    setChatChannel(chatChannels["U"]); // UPDATED
+    // Column 2 state reset
+    setChatChannel(chatChannels["U"]); 
     setChatOutput("");
     setReportOutput("");
     setCitationOutput("");
-    setChatMessageSent(false); // Reset chat status
+    setChatMessageSent(false); 
     setExistingSourceId(null);
     setSourceExists(false);
     setShowSourceModal(false);
     setMatchingSources([]);
-    setOverrideFilter(false); // Reset override
+    setOverrideFilter(false); 
     setOriginalSourceData(null);
-    setTreatAsNewSource(false); // <<< RESET STATE
+    setTreatAsNewSource(false); 
   };
 
-  // === Auto-generate Chat Output from current form state ===
+  // Auto-generate Chat Output from current form state 
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -473,6 +471,7 @@ const handleSourceSelect = (source) => {
     sourceDescription,
     additionalComment
   ]);
+
   // Auto-generate Report Output from current form state ===
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
@@ -504,7 +503,7 @@ const handleSourceSelect = (source) => {
     additionalComment
   ]);
 
-  // Auto-generate Citation Output from current form state ===
+  // Auto-generate Citation Output from current form state
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const dtg = makeDTG(dateStr, timeStr);
@@ -525,7 +524,7 @@ const handleSourceSelect = (source) => {
     setCitationOutput(citation.trim());
   }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
 
-  // === CHAT SUBMIT HANDLER ===
+  // Sent to ChatSurfer
   async function handleChatSubmit() {
     if (!reportBody.trim()) {
       alert("Please fill out the Report Body before sending a message.");
@@ -579,7 +578,7 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // === REPORT SUBMIT HANDLER ===
+  // Submit the report to the backend
   async function handleSubmit() {
     // 1. Check if the ChatSurfer message was sent and warn the user if not.
     if (!chatMessageSent) {
@@ -606,7 +605,7 @@ const handleSourceSelect = (source) => {
       const report_title = titleParts.join("_") || "UNTITLED";
       const filename = `${report_title}_IMAGE`;
 
-      // Environment
+      // Set Environment
       const API_URL = import.meta.env.VITE_API_URL;
       const API_KEY = import.meta.env.VITE_API_KEY;
       const IMG_URL = import.meta.env.VITE_IMAGE_UPLOAD_URL;
@@ -640,7 +639,7 @@ const handleSourceSelect = (source) => {
         image_url = uploadEndpoint; // use the upload URL as the reference
       }
 
-      // Build payload for /reports
+      // Build payload for /reports endpoint
       const reportPayload = {
         overall_classification: overallClass,
         title: report_title,
@@ -687,12 +686,13 @@ const handleSourceSelect = (source) => {
       const reportData = await reportRes.json().catch(() => ({}));
 
       // 2. If USPER is true, we are done. No source data is submitted.
+      // Future dev: DO NOT SEND USPER DATA TO THE BACKEND!
       if (usper) {
         setSubmitOk(
           `USPER Report created${reportData?.id ? " with id " + reportData.id : ""}.`
         );
         clearForm();
-        return; // End function execution here
+        return; 
       }
 
       // 3 & 4. If not USPER, proceed with source logic if a source name exists.
@@ -701,9 +701,8 @@ const handleSourceSelect = (source) => {
         let sourcePayload;
         let sourceMethod;
 
-        // <<< MODIFIED LOGIC
         if (sourceExists && existingSourceId && !treatAsNewSource) {
-          // A. Source exists AND we are NOT treating it as new. Check if an update is needed.
+          // Case 1: Source exists AND we are NOT treating it as new. Check if an update is needed.
           const descriptionChanged = originalSourceData?.description !== sourceDescription;
           const platformChanged = originalSourceData?.platform !== sourceType;
 
@@ -715,18 +714,18 @@ const handleSourceSelect = (source) => {
               source_name: sourceName,
               source_description: sourceDescription,
               source_platform: sourceType,
-              modified_by: cin, // 'modified_by' for updates
+              modified_by: cin, 
             };
           }
           // If nothing changed, sourceMethod and sourcePayload remain undefined, skipping the fetch.
         } else {
-          // B. Source does not exist OR we are treating it as a new one. Prepare a POST request.
+          // Case 2: Source does not exist OR we are treating it as a new one. Prepare a POST request.
           sourceMethod = "POST";
           sourcePayload = {
             source_name: sourceName,
             source_description: sourceDescription,
             source_platform: sourceType,
-            added_by: cin, // 'added_by' for new entries
+            added_by: cin, 
           };
         }
 
@@ -761,7 +760,7 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // Badge logic
+  // Input field badges
   const sourceBadge = (() => {
     if (usper) {
       return (
@@ -824,6 +823,7 @@ const handleSourceSelect = (source) => {
         initialValue={overallClass}
         onChange={(p) => setOverallClass(maxClass(p.value, collectorClass))}
       />
+      {/* I FUCKING HATE PROPS */}
       {/* Pass all necessary state and functions down to SectionA as props */}
       <SectionA
         dateStr={dateStr}
@@ -924,7 +924,6 @@ const handleSourceSelect = (source) => {
             </div>
 
             <div className="mt-2">
-              {/* <<< MODIFIED JSX FOR CHECKBOX */}
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
                     <label className="text-xs">Source Description:</label>

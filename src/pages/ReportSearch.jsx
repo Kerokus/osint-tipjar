@@ -134,7 +134,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       <form onSubmit={handleSearch} onReset={handleReset} className="p-4 bg-slate-800 border border-slate-600 rounded-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Input label="Full-Text Search" name="q" value={params.q} onChange={handleParamChange} placeholder="Search title, body..." />
-          <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="e.g., analyst_name" />
+          <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="A0000" />
           <div>
             <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">
               Source Platform
@@ -156,8 +156,8 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
           </div>
           <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
           <Input label="Country" name="country" value={params.country} onChange={handleParamChange} placeholder="KUWAIT" />
-          <Input label="Location" name="location" value={params.location} onChange={handleParamChange} placeholder="e.g., Baghdad" />
-          <Input label="Source Name" name="source_name" value={params.source_name} onChange={handleParamChange} placeholder="e.g., @example_channel" />
+          <Input label="Location" name="location" value={params.location} onChange={handleParamChange} placeholder="Baghdad" />
+          <Input label="Source Name" name="source_name" value={params.source_name} onChange={handleParamChange} placeholder="@example_channel" />
           <Input type="date" label="Created After" name="created_from" value={params.created_from} onChange={handleParamChange} />
           <Input type="date" label="Created Before" name="created_to" value={params.created_to} onChange={handleParamChange} />
         </div>

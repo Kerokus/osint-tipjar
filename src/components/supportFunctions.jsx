@@ -104,7 +104,6 @@ export function usperCheck(text) {
 
 export async function classifyImage(imageFile, classification) {
   return new Promise((resolve, reject) => {
-    // When using `import * as`, the actual library is often on the .default property.
     const fabricLib = fabric.default || fabric;
     const reader = new FileReader();
 
