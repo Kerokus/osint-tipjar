@@ -13,27 +13,27 @@ function slugify(s) {
 }
 
 export default function EditReport({ report, onClose, onSaveSuccess }) {
-  // --- STATE MANAGEMENT ---
+  
   const [formData, setFormData] = useState({ ...report });
   const [newImageFile, setNewImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [imageBlobUrl, setImageBlobUrl] = useState(null);
 
-  // --- NEW STATE FOR DROPDOWNS ---
+  // State for the dropdowns
   const [macoms, setMacoms] = useState([]);
   const [countries, setCountries] = useState([]);
 
   const rank = { U: 0, CUI: 1, CUIREL: 2 };
   const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
   
-  // API Config
+  // Environment
   const API_URL = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = useMemo(() => import.meta.env.VITE_API_KEY, []);
   const IMG_URL = useMemo(() => import.meta.env.VITE_IMAGE_UPLOAD_URL, []);
   const IMG_API_KEY = useMemo(() => import.meta.env.VITE_IMAGE_UPLOAD_API_KEY, []);
 
-  // Fetch protected image and create a blob URL
+  // Fetch image and create a blob URL
   useEffect(() => {
     if (!formData.image_url) return;
     let cancel = false;
@@ -53,7 +53,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     };
   }, [formData.image_url, IMG_API_KEY]);
 
-  // --- NEW: Fetch MACOM/Country lists on mount ---
+  // Populate MACOM and countries on mount
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
@@ -66,7 +66,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
       });
   }, [report.macom]);
 
-  // --- NEW: Update country list when MACOM changes ---
+  // Update country list when MACOM changes
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
       .then((r) => r.json())
@@ -78,6 +78,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
 
   // --- HANDLERS ---
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => {
@@ -193,7 +194,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-600">
             {/* Left Column */}
             <div className="space-y-4">
-              {/* --- NEW DROPDOWNS ADDED HERE --- */}
               <Dropdown label="MACOM" name="macom" value={formData.macom} onChange={handleInputChange}>
                 {macoms.map(m => <option key={m} value={m}>{m}</option>)}
               </Dropdown>
@@ -287,7 +287,6 @@ const Checkbox = ({ label, ...props }) => (
     </label>
 );
 
-// --- NEW Dropdown Component ---
 const Dropdown = ({ label, children, ...props }) => (
     <div>
         <label className="block text-xs font-medium text-slate-300 mb-1">{label}</label>

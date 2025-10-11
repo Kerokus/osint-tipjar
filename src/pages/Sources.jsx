@@ -1,12 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 
-/**
- * Sources.jsx
- * * A single-page component to search, view, and manage sources.
- * It combines search controls and results display into one view,
- * and includes a modal for viewing and editing individual source details.
- */
 export default function Sources() {
+  
   // State for search form inputs
   const [params, setParams] = useState({
     source_name: "",
@@ -146,7 +141,6 @@ export default function Sources() {
           </div>
           <Input label="Added By" name="added_by" value={params.added_by} onChange={handleParamChange} placeholder="e.g., analyst_cin" />
         </div>
-        {/* --- MODIFIED --- Added a new div wrapper and the "Add Source" button */}
         <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-4">
                 <button type="submit" className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-md text-white font-semibold">Search</button>
@@ -190,7 +184,7 @@ export default function Sources() {
         />
       )}
       
-      {/* --- ADDED --- Render the new AddSourceModal */}
+      {/* AddSourceModal */}
       {isAddingSource && (
         <AddSourceModal
           onClose={() => setIsAddingSource(false)}
@@ -209,7 +203,7 @@ export default function Sources() {
 
 /* ---------- Sub-components ---------- */
 
-// --- ADDED --- New component for the "Add Source" modal
+// Component for the "Add Source" modal
 function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   const [newSource, setNewSource] = useState({
     source_name: "",
@@ -218,7 +212,6 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState("");
-  // --- ADDED --- State for the confirmation checkbox
   const [isConfirmed, setIsConfirmed] = useState(false);
 
   const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
@@ -298,7 +291,6 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
           </div>
         </div>
 
-        {/* --- MODIFIED --- This is the updated footer section */}
         <div className="px-6 py-4 border-t border-slate-600 flex justify-between items-center gap-4">
           <div className="flex items-center">
             <input

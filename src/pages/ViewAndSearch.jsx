@@ -14,7 +14,7 @@ export default function ViewAndSearch() {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
-  const [total, setTotal] = useState(0); // This will be an estimated total
+  const [total, setTotal] = useState(0); 
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;

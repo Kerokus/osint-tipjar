@@ -1,12 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 
-/**
- * WordList.jsx
- * * A single-page component to view and manage a list of "dirty words".
- * It fetches the list, displays it in a table, and provides modals
- * for adding new words and confirming deletions.
- */
+
 export default function WordList() {
+  
   // State for API results and loading status
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);

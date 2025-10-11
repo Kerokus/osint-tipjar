@@ -124,12 +124,12 @@ function App() {
           </div>
         </div>
 
-        {/* Navigation now sits below the taller logo area */}
+        {/* Navigation sits below the taller logo area */}
         <div className={`overflow-y-auto ${collapsed ? "px-1 py-2" : "px-2 py-2"}`}>
           <SidebarNav />
         </div>
 
-        {/* 3. This new spacer div pushes everything below it to the bottom */}
+        {/* 3. This spacer div pushes everything below it to the bottom */}
         <div className="flex-1" />
 
         <div className="mt-auto px-2 py-3 border-t border-slate-700">

@@ -79,8 +79,6 @@ export default function Settings() {
       });
       const rd = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(rd.message || `HTTP ${r.status}`);
-      
-      // Add this line to update the local storage
       localStorage.setItem("display_name", displayName.trim());
 
       setMsg("Settings saved.");

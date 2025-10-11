@@ -1,12 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 
-/**
- * ReportSearch.jsx
- *
- * Provides a UI for searching reports based on the available API criteria.
- * It includes input fields, result display, and pagination.
- */
+
 export default function ReportSearch({ onViewReport }) { // 1. Accept the onViewReport prop
+  
   // State for search form inputs
   const [params, setParams] = useState({
     q: "",
@@ -31,7 +27,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
   // State for pagination
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [total, setTotal] = useState(0); // Estimated total, calculated on the last page.
+  const [total, setTotal] = useState(0); 
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
@@ -311,7 +307,6 @@ function fmtDate(d) {
   // Kept simple for now. Add back parseDDMMMYY if that format is also used here.
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
   if (!Number.isFinite(t)) return String(d);
-  // Corrected line with the proper "T"
   return new Date(t).toLocaleDateString();
 }
 

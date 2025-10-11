@@ -62,13 +62,14 @@ export default function Login({ onSuccess }) {
         throw new Error("Your account has been disabled. Please see an administrator.");
       }
 
-      // persist auth
+      // Set auth in local storage
+      // TO DO: Move this to a session with cookie instead of local with JWT
       localStorage.setItem("token", tokenFromLogin);
       localStorage.setItem("cin", cinFromLogin);
       localStorage.setItem("is_admin", String(!!data.is_admin));
       localStorage.setItem("display_name", data.display_name || "");
 
-      // first login flow → prompt PIN change
+      // If first login, set new pin
       if (firstLogin) {
         setFirstLoginUser({ cin: cinFromLogin, is_admin: !!data.is_admin });
         return;
@@ -122,6 +123,7 @@ export default function Login({ onSuccess }) {
     }
   }
 
+  //THIS IS A STIG REQUIREMENT FOR ALL DOD APPLICATIONS
   const ConsentModal = () => (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" />

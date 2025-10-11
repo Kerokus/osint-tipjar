@@ -21,7 +21,7 @@ function cleanSourceType(t) {
   return t.replace(/\s*User$/i, "").trim();
 }
 
-// Accept new onEdit prop
+
 export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +216,7 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
     </div>
   );
 }
-// Unchanged sub-components
+// Sub-components
 function ClassificationBanner({ classification }) {
   const styles = { U: "bg-green-600", CUI: "bg-purple-600", CUIREL: "bg-blue-600" };
   return <div className={`text-white text-center font-bold text-sm py-1 rounded ${styles[classification] || 'bg-gray-500'}`}>{classificationForOutput(classification)}</div>;
