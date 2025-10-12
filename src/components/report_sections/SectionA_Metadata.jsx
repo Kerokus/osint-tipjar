@@ -135,13 +135,22 @@ export default function SectionA_Metadata({
           <select value={macom} onChange={(e) => setMacom(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
             {macoms.map(m => <option key={m}>{m}</option>)}
           </select>
+          
           <label className="block text-xs mt-2">Country</label>
           <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
-            <option value="" disabled>SELECT COUNTRY</option>
-            {countries.map(c => <option key={c}>{c}</option>)}
+            <option value="">SELECT COUNTRY</option>
+            
+            {/* Display the name and code, but keep the value as just the name */}
+            {countries.map(c => (
+              <option key={c.name} value={c.name}>
+                {`${c.name} (${c.code})`}
+              </option>
+            ))}
           </select>
+
           <label className="block text-xs mt-2">Location</label>
           <input value={location} onChange={(e) => setLocation(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
+          
           <label className="block text-xs mt-2">MGRS</label>
           <input value={mgrs} onChange={(e) => setMgrs(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
         </div>

@@ -237,23 +237,23 @@ export default function CreateReport() {
     setTimeStr(formatHHmmUTC(now));
   }, []);
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
       .then((r) => r.json())
-      .then((data) => {
-        setMacoms(Object.keys(data));
-        const def = data["CENTCOM"] || [];
-        setCountries(def.slice().sort((a, b) => a.localeCompare(b)));
+    .then((data) => {
+      setMacoms(Object.keys(data));
+      const def = data["CENTCOM"] || [];
+      setCountries(def.slice().sort((a, b) => a.name.localeCompare(b.name)));
       });
   }, []);
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
-      .then((r) => r.json())
-      .then((data) => {
-        const list = (data[macom] || []).slice().sort((a, b) => a.localeCompare(b));
-        setCountries(list);
-        setCountry("");
-      });
-  }, [macom]);
+  fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
+    .then((r) => r.json())
+    .then((data) => {
+      const list = (data[macom] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      setCountries(list);
+      setCountry("");
+    });
+}, [macom]);
 
   const debounceRef = useRef(null);
   useEffect(() => {

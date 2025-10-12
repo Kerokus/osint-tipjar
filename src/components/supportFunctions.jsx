@@ -107,20 +107,14 @@ export async function classifyImage(imageFile, classification) {
     const fabricLib = fabric.default || fabric;
     const reader = new FileReader();
 
-    // This function will run once the FileReader has the image as a Data URL
     reader.onload = (event) => {
       const imageUrl = event.target.result;
-
-      // 1. Create a standard HTML Image element in memory
       const htmlImageElement = new window.Image();
       htmlImageElement.crossOrigin = "anonymous";
 
-      // 2. Set up the event handler for when the browser successfully loads the image
       htmlImageElement.onload = () => {
         try {
-          // 3. The browser has loaded the image; now create a Fabric image from the HTML element
           const fabricImage = new fabricLib.Image(htmlImageElement);
-
           const canvas = new fabricLib.StaticCanvas(null, {
             width: fabricImage.width,
             height: fabricImage.height,
@@ -129,35 +123,37 @@ export async function classifyImage(imageFile, classification) {
           canvas.add(fabricImage);
 
           let bannerConfig;
+          // --- [MODIFIED] Add a 'width' property for each case ---
           switch (classification) {
             case 'CUI':
-              bannerConfig = { text: 'CUI', bgColor: '#581c87' };
+              bannerConfig = { text: 'CUI', bgColor: '#581c87', width: 60 };
               break;
             case 'CUIREL':
-              bannerConfig = { text: 'CUI//REL TO USA, FVEY', bgColor: '#581c87' };
+              bannerConfig = { text: 'CUI//REL TO USA, FVEY', bgColor: '#581c87', width: 150 };
               break;
             default:
-              bannerConfig = { text: 'U', bgColor: '#16a34a' };
+              bannerConfig = { text: 'U', bgColor: '#16a34a', width: 40 };
               break;
           }
 
           const PADDING = 8;
           const FONT_SIZE = 12;
 
-          const text = new fabricLib.Textbox(bannerConfig.text, {
+          // --- Create Top-Right Banner ---
+          const textTopRight = new fabricLib.Textbox(bannerConfig.text, {
             fontFamily: 'Arial',
             fontSize: FONT_SIZE,
             fontWeight: 'bold',
             fill: 'white',
             textAlign: 'center',
-            width: classification === 'CUIREL' ? 150 : 100,
+            width: bannerConfig.width, // [MODIFIED] Use the width from the config
             originX: 'center',
             originY: 'center',
           });
 
-          const rect = new fabricLib.Rect({
-            width: text.width + PADDING * 2,
-            height: text.height + PADDING * 2,
+          const rectTopRight = new fabricLib.Rect({
+            width: textTopRight.width + PADDING * 2,
+            height: textTopRight.height + PADDING * 2,
             fill: bannerConfig.bgColor,
             stroke: 'black',
             strokeWidth: 1.5,
@@ -165,14 +161,43 @@ export async function classifyImage(imageFile, classification) {
             originY: 'center',
           });
 
-          const group = new fabricLib.Group([rect, text], {
+          const bannerTopRight = new fabricLib.Group([rectTopRight, textTopRight], {
             originX: 'right',
             originY: 'top',
             left: fabricImage.width - PADDING,
             top: PADDING,
           });
+
+          // --- Create Bottom-Left Banner ---
+          const textBottomLeft = new fabricLib.Textbox(bannerConfig.text, {
+            fontFamily: 'Arial',
+            fontSize: FONT_SIZE,
+            fontWeight: 'bold',
+            fill: 'white',
+            textAlign: 'center',
+            width: bannerConfig.width, // [MODIFIED] Use the width from the config
+            originX: 'center',
+            originY: 'center',
+          });
+
+          const rectBottomLeft = new fabricLib.Rect({
+            width: textBottomLeft.width + PADDING * 2,
+            height: textBottomLeft.height + PADDING * 2,
+            fill: bannerConfig.bgColor,
+            stroke: 'black',
+            strokeWidth: 1.5,
+            originX: 'center',
+            originY: 'center',
+          });
+
+          const bannerBottomLeft = new fabricLib.Group([rectBottomLeft, textBottomLeft], {
+            originX: 'left',
+            originY: 'bottom',
+            left: PADDING,
+            top: fabricImage.height - PADDING,
+          });
           
-          canvas.add(group);
+          canvas.add(bannerTopRight, bannerBottomLeft);
           canvas.renderAll();
 
           canvas.getElement().toBlob(
@@ -189,26 +214,20 @@ export async function classifyImage(imageFile, classification) {
             imageFile.type === 'image/jpeg' ? 'image/jpeg' : 'image/png'
           );
         } catch (err) {
-            // This will catch any errors from Fabric's side
             console.error("Error during Fabric.js canvas processing:", err);
             reject(err);
         }
       };
 
-      // Set up a handler for if the browser ITSELF fails to load the image
       htmlImageElement.onerror = () => {
         console.error("Browser failed to load image from Data URL.");
         reject(new Error("The browser could not load the image."));
       };
 
-      // 4. Finally, set the image source to start the loading process
       htmlImageElement.src = imageUrl;
     };
 
-    // Handle errors from the FileReader itself
     reader.onerror = (error) => reject(error);
-
-    // Start the process by reading the file
     reader.readAsDataURL(imageFile);
   });
 }

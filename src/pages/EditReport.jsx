@@ -55,23 +55,23 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
   // Populate MACOM and countries on mount
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
-      .then((r) => r.json())
-      .then((data) => {
-        setMacoms(Object.keys(data));
-        // Set initial country list based on the report's current MACOM
-        if (report.macom && data[report.macom]) {
-            setCountries(data[report.macom].slice().sort());
-        }
-      });
+  fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
+    .then((r) => r.json())
+    .then((data) => {
+      setMacoms(Object.keys(data));
+      if (report.macom && data[report.macom]) {
+        const initialCountries = data[report.macom].slice().sort((a, b) => a.name.localeCompare(b.name));
+        setCountries(initialCountries);
+      }
+    });
   }, [report.macom]);
 
   // Update country list when MACOM changes
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}country_locations/country_list.json`)
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
       .then((r) => r.json())
       .then((data) => {
-        const list = (data[formData.macom] || []).slice().sort();
+        const list = (data[formData.macom] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
         setCountries(list);
       });
   }, [formData.macom]);
@@ -199,7 +199,12 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
               </Dropdown>
               <Dropdown label="Country" name="country" value={formData.country} onChange={handleInputChange}>
                 <option value="">Select Country</option>
-                {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                {/* Map over objects, use name for key, and display name + code */}
+                {countries.map(c => (
+                  <option key={c.name} value={c.name}>
+                    {`${c.name} (${c.code})`}
+                  </option>
+                ))}
               </Dropdown>
 
               <Input label="Location" name="location" value={formData.location || ""} onChange={handleInputChange} />
