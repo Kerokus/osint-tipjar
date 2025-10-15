@@ -49,7 +49,7 @@ export default function SectionA_Metadata({
           <input value={cin} readOnly className="w-full h-9 rounded-md bg-slate-800 border border-slate-700 px-3" />
         </div>
         <div className="col-span-12 md:col-span-3 flex gap-2 items-end">
-          <button onClick={clearForm} className="flex-1 h-9 rounded-md bg-slate-800 border border-red-500 text-red-500">Clear Form</button>
+          <button onClick={clearForm} className="flex-1 h-9 rounded-md bg-slate-800 border border-red-500 text-red-500">New Form</button>
           
         </div>
         {/* Image uploader spans 2 rows */}
@@ -92,7 +92,7 @@ export default function SectionA_Metadata({
                   <span className="text-xs font-bold bg-slate-900/80 px-2 py-1 rounded text-white">CLASSIFY IMAGE:</span>
                   <button
                     onClick={() => {
-                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      console.log("SectionA button clicked!"); 
                       onClassifyImage('U');
                     }}
                     className="bg-green-600 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"
@@ -101,7 +101,7 @@ export default function SectionA_Metadata({
                   </button>
                   <button
                     onClick={() => {
-                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      console.log("SectionA button clicked!"); 
                       onClassifyImage('CUI');
                     }}
                     className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"
@@ -110,7 +110,7 @@ export default function SectionA_Metadata({
                   </button>
                   <button
                     onClick={() => {
-                      console.log("SectionA button clicked!"); // <-- ADD THIS LINE
+                      console.log("SectionA button clicked!"); 
                       onClassifyImage('CUIREL');
                     }}
                     className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md border border-slate-900 hover:brightness-110"

@@ -113,6 +113,7 @@ export default function CreateReport() {
   const [reportOutput, setReportOutput] = useState("");
   const [citationOutput, setCitationOutput] = useState("");
   const [chatMessageSent, setChatMessageSent] = useState(false);
+  const [copySuccess, setCopySuccess] = useState("");
 
   // State for dirty word search
   const [dirtyWords, setDirtyWords] = useState([]);
@@ -383,11 +384,14 @@ const handleSourceSelect = (source) => {
   };
 
   // Copy to clipboard helper
-  const copy = async (text) => {
+  const copy = async (text, type) => {
     try {
       await navigator.clipboard.writeText(text ?? "");
+      setCopySuccess(type); // Set which button was clicked
+      setTimeout(() => setCopySuccess(''), 10000); // Clear after 2 seconds
     } catch (e) {
       console.error("Copy failed:", e);
+      // Optionally handle copy error feedback here
     }
   };
 
@@ -436,6 +440,8 @@ const handleSourceSelect = (source) => {
     setOverrideFilter(false); 
     setOriginalSourceData(null);
     setTreatAsNewSource(false); 
+    setSubmitOk("");
+    setSubmitError("");
   };
 
   // Auto-generate Chat Output from current form state 
@@ -691,7 +697,6 @@ const handleSourceSelect = (source) => {
         setSubmitOk(
           `USPER Report created${reportData?.id ? " with id " + reportData.id : ""}.`
         );
-        clearForm();
         return; 
       }
 
@@ -750,8 +755,6 @@ const handleSourceSelect = (source) => {
       setSubmitOk(
         `Report created${reportData?.id ? " with id " + reportData.id : ""}`
         );
-      // Clear form after all operations are successful
-      clearForm();
     } catch (err) {
       console.error(err);
       setSubmitError(err?.message || "Submit failed");
@@ -964,23 +967,6 @@ const handleSourceSelect = (source) => {
               className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
             />
           </div>
-          {/* SUBMIT button */}
-          <div className="mt-4 space-y-2">
-            <button
-              type="button"
-              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold disabled:opacity-60"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? "SUBMITTING..." : "SUBMIT"}
-            </button>
-            {submitOk ? (
-              <div className="text-green-400 text-sm">{submitOk}</div>
-            ) : null}
-            {submitError ? (
-              <div className="text-red-400 text-sm">{submitError}</div>
-            ) : null}
-          </div>
         </div>
 
         {/* Column 2 */}
@@ -1033,10 +1019,14 @@ const handleSourceSelect = (source) => {
                 </button>
                 <button
                   type="button"
-                  className="flex-1 h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                  onClick={() => copy(chatOutput)}
+                  className={`flex-1 h-9 rounded-md bg-slate-800 border transition-all ${
+                    copySuccess === 'chat'
+                      ? 'border-green-500 text-white'
+                      : 'border-green-400 text-green-400'
+                  }`}
+                  onClick={() => copy(chatOutput, 'chat')}
                 >
-                  Copy Chat Output
+                  {copySuccess === 'chat' ? 'Copied!' : 'Copy Chat Output'}
                 </button>
               </div>
               {chatError ? <div className="text-red-400 text-sm">{chatError}</div> : null}
@@ -1054,10 +1044,14 @@ const handleSourceSelect = (source) => {
             <div className="mt-2">
               <button
                 type="button"
-                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                onClick={() => copy(reportOutput)}
+                className={`w-full h-9 rounded-md bg-slate-800 border transition-all ${
+                  copySuccess === 'report'
+                    ? 'border-green-500 text-white'
+                    : 'border-green-400 text-green-400'
+                }`}
+                onClick={() => copy(reportOutput, 'report')}
               >
-                Copy Report Output
+                {copySuccess === 'report' ? 'Copied!' : 'Copy Report Output'}
               </button>
             </div>
           </div>
@@ -1073,12 +1067,33 @@ const handleSourceSelect = (source) => {
             <div className="mt-2">
               <button
                 type="button"
-                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                onClick={() => copy(citationOutput)}
+                className={`w-full h-9 rounded-md bg-slate-800 border transition-all ${
+                  copySuccess === 'citation'
+                    ? 'border-green-500 text-white'
+                    : 'border-green-400 text-green-400'
+                }`}
+                onClick={() => copy(citationOutput, 'citation')}
               >
-                Copy Citation Output
+                {copySuccess === 'citation' ? 'Copied!' : 'Copy Citation Output'}
               </button>
             </div>
+          </div>
+          {/* SUBMIT button */}
+          <div className="mt-4 space-y-2">
+            <button
+              type="button"
+              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold disabled:opacity-60"
+              onClick={handleSubmit}
+              disabled={submitting || !!submitOk}
+            >
+              {submitting ? "SUBMITTING..." : "SUBMIT"}
+            </button>
+            {submitOk ? (
+              <div className="text-green-400 text-sm">{submitOk}</div>
+            ) : null}
+            {submitError ? (
+              <div className="text-red-400 text-sm">{submitError}</div>
+            ) : null}
           </div>
         </div>
       </div>

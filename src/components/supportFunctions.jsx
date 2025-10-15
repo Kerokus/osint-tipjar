@@ -123,40 +123,43 @@ export async function classifyImage(imageFile, classification) {
           canvas.add(fabricImage);
 
           let bannerConfig;
-          // --- [MODIFIED] Add a 'width' property for each case ---
           switch (classification) {
             case 'CUI':
-              bannerConfig = { text: 'CUI', bgColor: '#581c87', width: 60 };
+              bannerConfig = { text: 'CUI', bgColor: '#581c87', width: 50, fontSize: 25 };
               break;
             case 'CUIREL':
-              bannerConfig = { text: 'CUI//REL TO USA, FVEY', bgColor: '#581c87', width: 150 };
+              bannerConfig = { text: 'CUI//REL TO USA, FVEY', bgColor: '#581c87', width: 200, fontSize: 14 };
               break;
             default:
-              bannerConfig = { text: 'U', bgColor: '#16a34a', width: 40 };
+              bannerConfig = { text: 'U', bgColor: '#16a34a', width: 30, fontSize: 25 };
               break;
           }
 
-          const PADDING = 8;
-          const FONT_SIZE = 12;
+          // This is how close to the corner the box is. 0 = flush
+          const PADDING = 0;
+          
+          // This is the amount of space around the letters in the box
+          const textPadding = 8;
+          
 
           // --- Create Top-Right Banner ---
           const textTopRight = new fabricLib.Textbox(bannerConfig.text, {
             fontFamily: 'Arial',
-            fontSize: FONT_SIZE,
+            fontSize: bannerConfig.fontSize,
             fontWeight: 'bold',
             fill: 'white',
             textAlign: 'center',
-            width: bannerConfig.width, // [MODIFIED] Use the width from the config
+            width: bannerConfig.width, 
             originX: 'center',
             originY: 'center',
           });
 
           const rectTopRight = new fabricLib.Rect({
-            width: textTopRight.width + PADDING * 2,
-            height: textTopRight.height + PADDING * 2,
+            width: textTopRight.width + textPadding,
+            height: textTopRight.height + textPadding,
             fill: bannerConfig.bgColor,
             stroke: 'black',
-            strokeWidth: 1.5,
+            strokeWidth: 3,
             originX: 'center',
             originY: 'center',
           });
@@ -171,7 +174,7 @@ export async function classifyImage(imageFile, classification) {
           // --- Create Bottom-Left Banner ---
           const textBottomLeft = new fabricLib.Textbox(bannerConfig.text, {
             fontFamily: 'Arial',
-            fontSize: FONT_SIZE,
+            fontSize: bannerConfig.fontSize,
             fontWeight: 'bold',
             fill: 'white',
             textAlign: 'center',
@@ -181,11 +184,11 @@ export async function classifyImage(imageFile, classification) {
           });
 
           const rectBottomLeft = new fabricLib.Rect({
-            width: textBottomLeft.width + PADDING * 2,
-            height: textBottomLeft.height + PADDING * 2,
+            width: textBottomLeft.width + textPadding,
+            height: textBottomLeft.height + textPadding,
             fill: bannerConfig.bgColor,
             stroke: 'black',
-            strokeWidth: 1.5,
+            strokeWidth: 3,
             originX: 'center',
             originY: 'center',
           });
