@@ -119,6 +119,10 @@ export default function CreateReport() {
   const [dirtyWords, setDirtyWords] = useState([]);
   const [filterWordFound, setFilterWordFound] = useState(false);
   const [overrideFilter, setOverrideFilter] = useState(false);
+  const [sourceFilterWordFound, setSourceFilterWordFound] = useState(false);
+  const [sourceOverrideFilter, setSourceOverrideFilter] = useState(false);
+  const [additionalCommentFilterWordFound, setAdditionalCommentFilterWordFound] = useState(false);
+  const [additionalCommentOverrideFilter, setAdditionalCommentOverrideFilter] = useState(false);
   
   // Submit state for main report form
   const [submitting, setSubmitting] = useState(false);
@@ -208,9 +212,68 @@ export default function CreateReport() {
   }, [reportBody, dirtyWords, overrideFilter, maxClass]);
 
   useEffect(() => {
-    setOverallClass((prev) => maxClass(prev, collectorClass, imageClass));
+    setOverallClass(maxClass(collectorClass, imageClass));
   }, [collectorClass, imageClass, maxClass]);
 
+
+  // Effect to check for dirty words in the source/additional comments and adjust collectorClass
+  useEffect(() => {
+    // Exit if there are no words to check against
+    if (!dirtyWords.length) {
+        setSourceFilterWordFound(false);
+        setAdditionalCommentFilterWordFound(false);
+        return;
+    }
+
+    let foundInSource = false;
+    let foundInComment = false;
+    let classFromSource = "U";
+    let classFromComment = "U";
+
+    // 1. Loop through words to find the highest classification in EACH input separately
+    for (const word of dirtyWords) {
+        const escapedWord = escapeRegex(word.dirty_word);
+        const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
+
+        // Check the source description field
+        if (regex.test(sourceDescription)) {
+            foundInSource = true;
+            classFromSource = maxClass(classFromSource, word.word_classification);
+        }
+
+        // Check the additional comment field
+        if (regex.test(additionalComment)) {
+            foundInComment = true;
+            classFromComment = maxClass(classFromComment, word.word_classification);
+        }
+    }
+
+    // Update the state to show/hide the filter warnings
+    setSourceFilterWordFound(foundInSource);
+    setAdditionalCommentFilterWordFound(foundInComment);
+
+    // Reset override checkboxes if words are removed from the text areas
+    if (!foundInSource) setSourceOverrideFilter(false);
+    if (!foundInComment) setAdditionalCommentFilterWordFound(false);
+
+    // 2. Determine the final classification based ONLY on non-overridden inputs
+    const effectiveClassFromSource = !sourceOverrideFilter ? classFromSource : "U";
+    const effectiveClassFromComment = !additionalCommentOverrideFilter ? classFromComment : "U";
+    
+    // 3. The final class is the highest of the two effective classifications
+    const finalClass = maxClass(effectiveClassFromSource, effectiveClassFromComment);
+
+    setCollectorClass(finalClass);
+
+  }, [
+    sourceDescription, 
+    additionalComment, 
+    dirtyWords, 
+    sourceOverrideFilter, 
+    additionalCommentOverrideFilter, 
+    maxClass
+  ]);
+  
   //If the user selects "USPER" it will remove anything in the Source Description field.
   useEffect(() => {
     if (usper) {
@@ -930,13 +993,19 @@ const handleSourceSelect = (source) => {
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
                     <label className="text-xs">Source Description:</label>
+                    {/* This is the new badge that will now appear */}
+                    {sourceFilterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
                     {sourceExists && (
                         <div className="flex items-center">
                             <input
                                 type="checkbox"
                                 id="newSourceCheckbox"
                                 checked={treatAsNewSource}
-                                onChange={(e) => setTreatAsNewSource(e.target.checked)}
+                                onChange={(e) => setTreatAsNew-Source(e.target.checked)}
                                 className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
                             />
                             <label htmlFor="newSourceCheckbox" className="ml-2 text-xs font-medium text-slate-300">New Source</label>
@@ -945,6 +1014,21 @@ const handleSourceSelect = (source) => {
                 </div>
                 {sourceBadge}
               </div>
+              
+              {/* This is the new override checkbox that will now appear */}
+              {sourceFilterWordFound && (
+                  <div className="flex items-center justify-end mb-2">
+                      <input
+                          type="checkbox"
+                          id="sourceOverrideFilter"
+                          checked={sourceOverrideFilter}
+                          onChange={(e) => setSourceOverrideFilter(e.target.checked)}
+                          className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                      />
+                      <label htmlFor="SourceOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                  </div>
+              )}
+
               <textarea
                 value={sourceDescription}
                 onChange={(e) => setSourceDescription(e.target.value)}
@@ -960,11 +1044,32 @@ const handleSourceSelect = (source) => {
 
           {/* Additional Comment Text */}
           <div>
-            <label className="block text-xs">Additional Comment Text</label>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <label className="block text-xs">Additional Comment Text</label>
+                    {additionalCommentFilterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
+                </div>
+                {additionalCommentFilterWordFound && (
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="additionalCommentOverrideFilter"
+                            checked={additionalCommentOverrideFilter}
+                            onChange={(e) => setAdditionalCommentOverrideFilter(e.target.checked)}
+                            className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                        />
+                        <label htmlFor="additionalCommentOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                    </div>
+                )}
+            </div>
             <textarea
               value={additionalComment}
               onChange={(e) => setAdditionalComment(e.target.value)}
-              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2 mt-1"
             />
           </div>
         </div>

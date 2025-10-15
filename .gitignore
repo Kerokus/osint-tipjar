@@ -17,7 +17,6 @@ certs
 dist
 dist-ssr
 *.local
-country_locations
 *.zip
 *.tar
 
