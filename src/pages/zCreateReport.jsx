@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
 import SectionA from "../components/report_sections/SectionA_Metadata";
 import SectionB from "../components/report_sections/SectionB_Source";
-import { findSourceByName, getDirtyWords } from "../components/supportFunctions";
+import { findSourceByName, getDirtyWords, usperCheck, classifyImage } from "../components/supportFunctions";
 
-// Helper functions that were previously in SectionA
+// Helper functions for SectionA
 function formatDDMMMYY(dateUtc) {
   const d = dateUtc.getUTCDate().toString().padStart(2, "0");
   const mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateUtc.getUTCMonth()];
@@ -16,20 +16,8 @@ function formatHHmmUTC(dateUtc) {
   const m = dateUtc.getUTCMinutes().toString().padStart(2, "0");
   return `${h}${m}`;
 }
-async function loadSql() {
-  const initSqlJs = (await import("sql.js")).default;
-  return await initSqlJs({ locateFile: (f) => `/vendor/${f}` });
-}
-async function openCountryDb(country) {
-  const encoded = encodeURIComponent(`${country}.db`);
-  const res = await fetch(`/country_locations/${encoded}`);
-  if (!res.ok) throw new Error(`DB fetch failed: ${res.status}`);
-  const buf = await res.arrayBuffer();
-  const SQL = await loadSql();
-  return new SQL.Database(new Uint8Array(buf));
-}
 
-// === New helpers for Chat Output auto-generation ===
+// Helpers for Chat Output auto-generation
 function classificationForOutput(val) {
   if (val === "U") return "U";
   if (val === "CUI") return "CUI";
@@ -43,7 +31,6 @@ function makeDTG(dateStr, timeStr) {
   const DD = dateStr.slice(0, 2);
   const MMM = dateStr.slice(2, 5).toUpperCase();
   const YY = dateStr.slice(5, 7);
-  // Assume 2000s for YY; preserves existing behavior of dateStr
   const HH = timeStr.slice(0, 2);
   const MM = timeStr.slice(2, 4);
   return `${DD}${HH}${MM}Z${MMM}${YY}`;
@@ -65,13 +52,20 @@ function escapeRegex(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Main function
 export default function CreateReport() {
+  
+  const chatChannels = {
+    "U" : "513th_mibt_osint",
+    "CUI" : "513th_mibt_osint_cui",
+    "CUIREL" : "513th_mibt_osint_cui_rel"
+  };
+
   // Overall classification state
   const [overallClass, setOverallClass] = useState("U");
   const rank = { U: 0, CUI: 1, CUIREL: 2 }; // U < CUI < CUI//REL TO USA, FVEY
   const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
 
-  // All state is now "lifted" to this parent component
   // State for Section A
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
@@ -85,6 +79,8 @@ export default function CreateReport() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imgFile, setImgFile] = useState(null);
+  const [originalImgFile, setOriginalImgFile] = useState(null); 
+  const [imageClass, setImageClass] = useState("U"); 
 
   // State for Section B
   const [usper, setUsper] = useState(false);
@@ -101,25 +97,32 @@ export default function CreateReport() {
   const [sourceExists, setSourceExists] = useState(false);
   const [matchingSources, setMatchingSources] = useState([]);
   const [showSourceModal, setShowSourceModal] = useState(false);
+  const [originalSourceData, setOriginalSourceData] = useState(null);
+  const [treatAsNewSource, setTreatAsNewSource] = useState(false); 
 
-  // New state for Column 1 under the second blue line
+  // State for Collector Comments
   const [reportBody, setReportBody] = useState("");
   const [collectorClass, setCollectorClass] = useState("U");
   const [sourceDescription, setSourceDescription] = useState("");
   const [additionalComment, setAdditionalComment] = useState("");
 
-  // New state for Column 2
+  // State for Report Output fields
   const [displayName, setDisplayName] = useState("");
-  const [chatChannel, setChatChannel] = useState("513th-idsg-test");
+  const [chatChannel, setChatChannel] = useState(chatChannels["U"]); 
   const [chatOutput, setChatOutput] = useState("");
   const [reportOutput, setReportOutput] = useState("");
   const [citationOutput, setCitationOutput] = useState("");
   const [chatMessageSent, setChatMessageSent] = useState(false);
+  const [copySuccess, setCopySuccess] = useState("");
 
   // State for dirty word search
   const [dirtyWords, setDirtyWords] = useState([]);
   const [filterWordFound, setFilterWordFound] = useState(false);
   const [overrideFilter, setOverrideFilter] = useState(false);
+  const [sourceFilterWordFound, setSourceFilterWordFound] = useState(false);
+  const [sourceOverrideFilter, setSourceOverrideFilter] = useState(false);
+  const [additionalCommentFilterWordFound, setAdditionalCommentFilterWordFound] = useState(false);
+  const [additionalCommentOverrideFilter, setAdditionalCommentOverrideFilter] = useState(false);
   
   // Submit state for main report form
   const [submitting, setSubmitting] = useState(false);
@@ -133,6 +136,40 @@ export default function CreateReport() {
   useEffect(() => {
     setDisplayName(localStorage.getItem("display_name") || "");
   }, []);
+
+  // UseEffect to auto-select channel
+  useEffect(() => {
+    setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
+  }, [overallClass]);
+
+  const handleSetImgFile = (file) => {
+    setImgFile(file);
+    if (file) {
+      setOriginalImgFile(file); 
+      setImageClass("U"); 
+    } else {
+      setOriginalImgFile(null); // Clear original if image is removed
+    }
+  };
+
+  const handleClassifyImage = async (classification) => {
+    console.log("handleClassifyImage called with:", classification);
+    console.log("Current originalImgFile state:", originalImgFile);
+    if (!originalImgFile) {
+      alert("Please upload an image first.");
+      return;
+    }
+
+    try {
+      const classifiedFile = await classifyImage(originalImgFile, classification);
+      setImgFile(classifiedFile); 
+      setImageClass(classification);
+      setOverallClass((prev) => maxClass(prev, collectorClass, classification));
+    } catch (error) {
+      console.error("Failed to classify image:", error);
+      alert("An error occurred while adding the classification banner.");
+    }
+  };
 
   // Fetch dirty words on component mount
   useEffect(() => {
@@ -170,20 +207,92 @@ export default function CreateReport() {
 
     // Only force classification up if a word is found AND the override is not checked
     if (wordFound && !overrideFilter) {
-        setOverallClass(prev => maxClass(prev, highestClassification));
+        setOverallClass(maxClass(collectorClass, highestClassification));
     }
   }, [reportBody, dirtyWords, overrideFilter, maxClass]);
 
   useEffect(() => {
-    setOverallClass((prev) => maxClass(prev, collectorClass));
-  }, [collectorClass, maxClass]);
+    setOverallClass((prevClass) => maxClass(prevClass, collectorClass, imageClass));
+  }, [collectorClass, imageClass, maxClass]);
 
+
+  // Effect to check for dirty words in the source/additional comments and adjust collectorClass
+  useEffect(() => {
+    // Exit if there are no words to check against
+    if (!dirtyWords.length) {
+        setSourceFilterWordFound(false);
+        setAdditionalCommentFilterWordFound(false);
+        return;
+    }
+
+    let foundInSource = false;
+    let foundInComment = false;
+    let classFromSource = "U";
+    let classFromComment = "U";
+
+    // 1. Loop through words to find the highest classification in EACH input separately
+    for (const word of dirtyWords) {
+        const escapedWord = escapeRegex(word.dirty_word);
+        const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
+
+        // Check the source description field
+        if (regex.test(sourceDescription)) {
+            foundInSource = true;
+            classFromSource = maxClass(classFromSource, word.word_classification);
+        }
+
+        // Check the additional comment field
+        if (regex.test(additionalComment)) {
+            foundInComment = true;
+            classFromComment = maxClass(classFromComment, word.word_classification);
+        }
+    }
+
+    // Update the state to show/hide the filter warnings
+    setSourceFilterWordFound(foundInSource);
+    setAdditionalCommentFilterWordFound(foundInComment);
+
+    // Reset override checkboxes if words are removed from the text areas
+    if (!foundInSource) setSourceOverrideFilter(false);
+    if (!foundInComment) setAdditionalCommentFilterWordFound(false);
+
+    // 2. Determine the final classification based ONLY on non-overridden inputs
+    const effectiveClassFromSource = !sourceOverrideFilter ? classFromSource : "U";
+    const effectiveClassFromComment = !additionalCommentOverrideFilter ? classFromComment : "U";
+    
+    // 3. The final class is the highest of the two effective classifications
+    const finalClass = maxClass(effectiveClassFromSource, effectiveClassFromComment);
+
+    setCollectorClass((prevClass) => maxClass(prevClass, finalClass));
+
+  }, [
+    sourceDescription, 
+    additionalComment, 
+    dirtyWords, 
+    sourceOverrideFilter, 
+    additionalCommentOverrideFilter, 
+    maxClass
+  ]);
+  
   //If the user selects "USPER" it will remove anything in the Source Description field.
   useEffect(() => {
     if (usper) {
       setSourceDescription("");
     }
   }, [usper]);
+
+  // Effect to automatically set USPI if (USPER) is in the report body
+  useEffect(() => {
+    if (usperCheck(reportBody)) {
+      setUspi(true);
+    }
+  }, [reportBody]);
+
+/**
+ * Okay this next section isn't the cleanest. I had wanted to make every aspect of this 
+ * page its own component, but I'm not great at passing props and I messed it up
+ * So I ended up just moving the rest into this page. Good luck.
+ */
 
   // Logic/effects that were previously in SectionA
   useEffect(() => {
@@ -192,23 +301,23 @@ export default function CreateReport() {
     setTimeStr(formatHHmmUTC(now));
   }, []);
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
+    fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
       .then((r) => r.json())
-      .then((data) => {
-        setMacoms(Object.keys(data));
-        const def = data["CENTCOM"] || [];
-        setCountries(def.slice().sort((a, b) => a.localeCompare(b)));
+    .then((data) => {
+      setMacoms(Object.keys(data));
+      const def = data["CENTCOM"] || [];
+      setCountries(def.slice().sort((a, b) => a.name.localeCompare(b.name)));
       });
   }, []);
   useEffect(() => {
-    fetch("/country_locations/country_list.json")
-      .then((r) => r.json())
-      .then((data) => {
-        const list = (data[macom] || []).slice().sort((a, b) => a.localeCompare(b));
-        setCountries(list);
-        setCountry("");
-      });
-  }, [macom]);
+  fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
+    .then((r) => r.json())
+    .then((data) => {
+      const list = (data[macom] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      setCountries(list);
+      setCountry("");
+    });
+}, [macom]);
 
   const debounceRef = useRef(null);
   useEffect(() => {
@@ -219,33 +328,47 @@ export default function CreateReport() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      let db;
       try {
-        db = await openCountryDb(country);
-        const stmt = db.prepare(`
-          SELECT l.location as location, l.mgrs as mgrs, p.province as province
-          FROM Locations l
-          JOIN Provinces p ON l.province_id = p.id
-          WHERE lower(' ' || l.location || ' ') LIKE '% ' || lower(?) || ' %'
-          ORDER BY l.location ASC;
-        `);
-        const rows = [];
-        stmt.bind([location]);
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        setResults(rows);
-      } catch (err) {
-        console.error("Database error:", err);
-        setResults([]);
-      } finally {
-        if (db) {
-          db.close();
+        const API_URL = import.meta.env.VITE_API_URL;
+        const API_KEY = import.meta.env.VITE_API_KEY;
+
+        if (!API_URL || !API_KEY) {
+          throw new Error("API URL or Key is missing from environment variables.");
         }
+
+        // Use URLSearchParams to handle encoding of query parameters correctly
+        const params = new URLSearchParams({
+          country: country,
+          location: location,
+        });
+        const endpoint = `${String(API_URL).replace(/\/+$/, "")}/countries?${params.toString()}`;
+
+        const res = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+                'x-api-key': API_KEY
+            }
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Server returned an error");
+          throw new Error(`Location search failed: ${res.status} ${errorText}`);
+        }
+
+        const data = await res.json();
+        setResults(data);
+
+      } catch (err) {
+        console.error("Location search error:", err);
+        setResults([]); // Clear results on error
+      } finally {
         setLoading(false);
       }
-    }, 800);
+    }, 800); // 800ms debounce
+    
     return () => clearTimeout(debounceRef.current);
   }, [country, location]);
+
 
   const sourceSearchDebounceRef = useRef(null);
     useEffect(() => {
@@ -253,6 +376,8 @@ export default function CreateReport() {
     if (!sourceName.trim()) {
         setSourceExists(false);
         setExistingSourceId(null);
+        setOriginalSourceData(null);
+        setTreatAsNewSource(false); 
         return;
     }
 
@@ -272,6 +397,11 @@ export default function CreateReport() {
             setSourceType(source.source_platform || "Website");
             setExistingSourceId(source.id);
             setSourceExists(true);
+            setTreatAsNewSource(false); // <<< RESET STATE
+            setOriginalSourceData({
+                description: source.source_description || "",
+                platform: source.source_platform || "Website"
+            });
             setShowSourceModal(false); // Ensure modal is closed
         } else if (results && results.length > 1) {
             // CASE 2: Multiple matches found
@@ -281,6 +411,8 @@ export default function CreateReport() {
             // CASE 3: No match found (or an error occurred)
             setSourceExists(false);
             setExistingSourceId(null);
+            setOriginalSourceData(null);
+            setTreatAsNewSource(false); // <<< RESET STATE
         }
         } catch (error) {
         console.error("Error finding source:", error);
@@ -296,36 +428,43 @@ const handleSourceSelect = (source) => {
     setSourceType(source.source_platform || "Website");
     setExistingSourceId(source.id);
     setSourceExists(true);
+    setTreatAsNewSource(false); // <<< RESET STATE
+    setOriginalSourceData({
+        description: source.source_description || "",
+        platform: source.source_platform || "Website"
+    });
     setShowSourceModal(false); // Close the modal after selection
 };
 
   const onDrop = (e) => {
     e.preventDefault();
     const f = e.dataTransfer.files?.[0];
-    if (f) setImgFile(f);
+    if (f) handleSetImgFile(f);
   };
   const onChoose = (e) => {
     const f = e.target.files?.[0];
-    if (f) setImgFile(f);
+    if (f) handleSetImgFile(f);
   };
 
-  // Copy helper
-  const copy = async (text) => {
+  // Copy to clipboard helper
+  const copy = async (text, type) => {
     try {
       await navigator.clipboard.writeText(text ?? "");
+      setCopySuccess(type); // Set which button was clicked
+      setTimeout(() => setCopySuccess(''), 10000); // Clear after 2 seconds
     } catch (e) {
       console.error("Copy failed:", e);
+      // Optionally handle copy error feedback here
     }
   };
 
   //helper function for Citation Report
   function cleanSourceType(t) {
     if (!t) return "";
-    // Trim the string FIRST, then perform the replacement.
     return t.trim().replace(/\s*User$/i, "");
   }
 
-  // The clearForm function now resets state for all sections
+  // State reset when the user hits the "Clear Form" button
   const clearForm = () => {
     // Section A state reset
     setMacom("CENTCOM");
@@ -334,6 +473,8 @@ const handleSourceSelect = (source) => {
     setMgrs("");
     setResults([]);
     setImgFile(null);
+    setOriginalImgFile(null);
+    setImageClass("U");
     // Section B state reset
     setUsper(false);
     setUspi(false);
@@ -343,26 +484,30 @@ const handleSourceSelect = (source) => {
     setUid("");
     setArticleTitle("N/A");
     setArticleAuthor("N/A");
-    // Column 1 new state reset
+    // Column 1 state reset
     setReportBody("");
     setCollectorClass("U");
     setSourceDescription("");
     setAdditionalComment("");
     setOverallClass("U");
-    // Column 2 new state reset
-    setChatChannel("513th-idsg-test");
+    // Column 2 state reset
+    setChatChannel(chatChannels["U"]); 
     setChatOutput("");
     setReportOutput("");
     setCitationOutput("");
-    setChatMessageSent(false); // Reset chat status
+    setChatMessageSent(false); 
     setExistingSourceId(null);
     setSourceExists(false);
     setShowSourceModal(false);
     setMatchingSources([]);
-    setOverrideFilter(false); // Reset override
+    setOverrideFilter(false); 
+    setOriginalSourceData(null);
+    setTreatAsNewSource(false); 
+    setSubmitOk("");
+    setSubmitError("");
   };
 
-  // === Auto-generate Chat Output from current form state ===
+  // Auto-generate Chat Output from current form state 
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -375,8 +520,9 @@ const handleSourceSelect = (source) => {
     const body = reportBody || "";
     const cinDisp = cin || "";
     const comment = sourceDescription || "";
+    const adtlComment = additionalComment || "";
 
-    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} (${oc})`;
+    const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} ${adtlComment} (${oc})`;
     setChatOutput(chat.trim());
     setChatMessageSent(false); // Reset sent status if underlying data changes
   }, [
@@ -391,8 +537,10 @@ const handleSourceSelect = (source) => {
     reportBody,
     cin,
     collectorClass,
-    sourceDescription
+    sourceDescription,
+    additionalComment
   ]);
+
   // Auto-generate Report Output from current form state ===
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
@@ -405,8 +553,9 @@ const handleSourceSelect = (source) => {
     const body = reportBody || "";
     const mgrsDisp = mgrs || "";
     const desc = sourceDescription || "";
+    const adtlComment = additionalComment || "";
 
-    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) COLLECTOR COMMENT: ${desc}`;
+    const report = `(${oc}) On ${dtg}, ${srcType} ${usPerson}${srcName}\n${action} ${body}\n(${mgrsDisp})\n\n(${cc}) COLLECTOR COMMENT: ${desc} ${adtlComment}`;
     setReportOutput(report.trim());
   }, [
     overallClass,
@@ -419,10 +568,11 @@ const handleSourceSelect = (source) => {
     reportBody,
     mgrs,
     sourceDescription,
-    didWhat
+    didWhat,
+    additionalComment
   ]);
 
-  // Auto-generate Citation Output from current form state ===
+  // Auto-generate Citation Output from current form state
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const dtg = makeDTG(dateStr, timeStr);
@@ -436,14 +586,14 @@ const handleSourceSelect = (source) => {
 
     let citation;
     if (didWhat === "published") {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+      citation = `(U) ${srcType} | ${usPersonRep}${srcName} | ${citationTitle} | ${citationAuthor} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
     } else {
-      citation = `(${oc}) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
+      citation = `(U) ${srcType} | ${usPersonRep}${srcName} | ${uidDisp} | ${dtg} | UNCLASSIFIED | U.S. Person: ${usPerson}`;
     }
     setCitationOutput(citation.trim());
   }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
 
-  // === CHAT SUBMIT HANDLER ===
+  // Sent to ChatSurfer
   async function handleChatSubmit() {
     if (!reportBody.trim()) {
       alert("Please fill out the Report Body before sending a message.");
@@ -458,19 +608,17 @@ const handleSourceSelect = (source) => {
     setSendingChat(true);
 
     try {
-      const API_URL = "https://chatsurfer.nro.mil/api/chatserver/message";
-      const API_KEY = import.meta.env.VITE_CHATSURFER_API_KEY;
+      const API_URL = "https://3v8o0b4ojc.execute-api.us-gov-west-1.amazonaws.com/send/message";
+      const CHAT_API_KEY = import.meta.env.VITE_CHATSURFER_API_KEY;
       
-      if (!API_KEY) {
+      if (!CHAT_API_KEY) {
         throw new Error("ChatSurfer API Key is missing from environment variables.");
       }
       
       const payload = {
-        // The classification format "UNCLASSIFIED//FOUO" from the example may
-        // differ from the form's logic. Using the form's classification for now.
-        classification: "UNCLASSIFIED//FOUO",
+        classification: "UNCLASSIFIED",
         message: chatOutput,
-        domainId: "chatsurferxmppunclass", // this is based on ChatSurfer's docs
+        domainId: "chatsurferxmppunclass", // <---- I got this from the chatsurfer docs https://chatsurfer.nro.mil/apidocs#tag/(U)-Chat-Messages
         nickName: displayName,
         roomName: chatChannel
       };
@@ -479,7 +627,7 @@ const handleSourceSelect = (source) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "api-key": API_KEY, 
+          "x-api-key": CHAT_API_KEY, 
         },
         body: JSON.stringify(payload),
       });
@@ -499,7 +647,7 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // === REPORT SUBMIT HANDLER ===
+  // Submit the report to the backend
   async function handleSubmit() {
     // 1. Check if the ChatSurfer message was sent and warn the user if not.
     if (!chatMessageSent) {
@@ -526,7 +674,7 @@ const handleSourceSelect = (source) => {
       const report_title = titleParts.join("_") || "UNTITLED";
       const filename = `${report_title}_IMAGE`;
 
-      // Environment
+      // Set Environment
       const API_URL = import.meta.env.VITE_API_URL;
       const API_KEY = import.meta.env.VITE_API_KEY;
       const IMG_URL = import.meta.env.VITE_IMAGE_UPLOAD_URL;
@@ -560,7 +708,7 @@ const handleSourceSelect = (source) => {
         image_url = uploadEndpoint; // use the upload URL as the reference
       }
 
-      // Build payload for /reports
+      // Build payload for /reports endpoint
       const reportPayload = {
         overall_classification: overallClass,
         title: report_title,
@@ -607,12 +755,12 @@ const handleSourceSelect = (source) => {
       const reportData = await reportRes.json().catch(() => ({}));
 
       // 2. If USPER is true, we are done. No source data is submitted.
+      // Future dev: DO NOT SEND USPER DATA TO THE BACKEND!
       if (usper) {
         setSubmitOk(
           `USPER Report created${reportData?.id ? " with id " + reportData.id : ""}.`
         );
-        clearForm();
-        return; // End function execution here
+        return; 
       }
 
       // 3 & 4. If not USPER, proceed with source logic if a source name exists.
@@ -621,47 +769,55 @@ const handleSourceSelect = (source) => {
         let sourcePayload;
         let sourceMethod;
 
-        if (sourceExists && existingSourceId) {
-          // A. Source exists, prepare a PUT request to update it.
-          sourceMethod = "PUT";
-          sourceEndpoint += `/${existingSourceId}`;
-          sourcePayload = {
-            source_name: sourceName,
-            source_description: sourceDescription,
-            source_platform: sourceType,
-            modified_by: cin, // 'modified_by' for updates
-          };
+        if (sourceExists && existingSourceId && !treatAsNewSource) {
+          // Case 1: Source exists AND we are NOT treating it as new. Check if an update is needed.
+          const descriptionChanged = originalSourceData?.description !== sourceDescription;
+          const platformChanged = originalSourceData?.platform !== sourceType;
+
+          if (descriptionChanged || platformChanged) {
+            // Data has changed, prepare a PUT request to update it.
+            sourceMethod = "PUT";
+            sourceEndpoint += `/${existingSourceId}`;
+            sourcePayload = {
+              source_name: sourceName,
+              source_description: sourceDescription,
+              source_platform: sourceType,
+              modified_by: cin, 
+            };
+          }
+          // If nothing changed, sourceMethod and sourcePayload remain undefined, skipping the fetch.
         } else {
-          // B. Source does not exist, prepare a POST request to create it.
+          // Case 2: Source does not exist OR we are treating it as a new one. Prepare a POST request.
           sourceMethod = "POST";
           sourcePayload = {
             source_name: sourceName,
             source_description: sourceDescription,
             source_platform: sourceType,
-            added_by: cin, // 'added_by' for new entries
+            added_by: cin, 
           };
         }
 
-        const sourceRes = await fetch(sourceEndpoint, {
-          method: sourceMethod,
-          headers: headers,
-          body: JSON.stringify(sourcePayload),
-        });
+        // Only perform the fetch if a method was set (i.e., a create or an update is needed)
+        if (sourceMethod) {
+          const sourceRes = await fetch(sourceEndpoint, {
+            method: sourceMethod,
+            headers: headers,
+            body: JSON.stringify(sourcePayload),
+          });
 
-        if (!sourceRes.ok) {
-          const text = await sourceRes.text().catch(() => "");
-          // The report was created, but the source operation failed. Show a specific error.
-          throw new Error(
-            `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
-          );
+          if (!sourceRes.ok) {
+            const text = await sourceRes.text().catch(() => "");
+            // The report was created, but the source operation failed. Show a specific error.
+            throw new Error(
+              `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
+            );
+          }
         }
       }
 
       setSubmitOk(
-        `Report created${reportData?.id ? " with id " + reportData.id : ""}. Source info saved.`
-      );
-      // Clear form after all operations are successful
-      clearForm();
+        `Report created${reportData?.id ? " with id " + reportData.id : ""}`
+        );
     } catch (err) {
       console.error(err);
       setSubmitError(err?.message || "Submit failed");
@@ -670,7 +826,7 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // Badge logic
+  // Input field badges
   const sourceBadge = (() => {
     if (usper) {
       return (
@@ -717,12 +873,14 @@ const handleSourceSelect = (source) => {
             onClick={() => setShowSourceModal(false)}
             className="mt-6 w-full h-9 rounded-md bg-slate-700 text-white font-bold"
             >
-            Cancel
+            Create New
             </button>
         </div>
         </div>
     )
     );
+  
+  const isUspiLocked = usperCheck(reportBody);  
 
   return (
     <div>
@@ -731,6 +889,7 @@ const handleSourceSelect = (source) => {
         initialValue={overallClass}
         onChange={(p) => setOverallClass(maxClass(p.value, collectorClass))}
       />
+      {/* I FUCKING HATE PROPS */}
       {/* Pass all necessary state and functions down to SectionA as props */}
       <SectionA
         dateStr={dateStr}
@@ -751,10 +910,11 @@ const handleSourceSelect = (source) => {
         results={results}
         loading={loading}
         imgFile={imgFile}
-        setImgFile={setImgFile}
+        setImgFile={handleSetImgFile}
         onDrop={onDrop}
         onChoose={onChoose}
         clearForm={clearForm}
+        onClassifyImage={handleClassifyImage}
       />
       <hr className="my-6 w-full border-sky-300" />
       {/* Pass all necessary state and functions down to SectionB as props */}
@@ -763,6 +923,7 @@ const handleSourceSelect = (source) => {
         setUsper={setUsper}
         uspi={uspi}
         setUspi={setUspi}
+        isUspiLocked={isUspiLocked}
         sourceType={sourceType}
         setSourceType={setSourceType}
         sourceName={sourceName}
@@ -830,9 +991,44 @@ const handleSourceSelect = (source) => {
 
             <div className="mt-2">
               <div className="flex justify-between items-center mb-1">
-                <label className="text-xs">Source Description:</label>
+                <div className="flex items-center gap-2">
+                    <label className="text-xs">Source Description:</label>
+                    {/* This is the new badge that will now appear */}
+                    {sourceFilterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
+                    {sourceExists && (
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="newSourceCheckbox"
+                                checked={treatAsNewSource}
+                                onChange={(e) => setTreatAsNew-Source(e.target.checked)}
+                                className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                            />
+                            <label htmlFor="newSourceCheckbox" className="ml-2 text-xs font-medium text-slate-300">New Source</label>
+                        </div>
+                    )}
+                </div>
                 {sourceBadge}
               </div>
+              
+              {/* This is the new override checkbox that will now appear */}
+              {sourceFilterWordFound && (
+                  <div className="flex items-center justify-end mb-2">
+                      <input
+                          type="checkbox"
+                          id="sourceOverrideFilter"
+                          checked={sourceOverrideFilter}
+                          onChange={(e) => setSourceOverrideFilter(e.target.checked)}
+                          className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                      />
+                      <label htmlFor="SourceOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                  </div>
+              )}
+
               <textarea
                 value={sourceDescription}
                 onChange={(e) => setSourceDescription(e.target.value)}
@@ -848,29 +1044,33 @@ const handleSourceSelect = (source) => {
 
           {/* Additional Comment Text */}
           <div>
-            <label className="block text-xs">Additional Comment Text</label>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <label className="block text-xs">Additional Comment Text</label>
+                    {additionalCommentFilterWordFound && (
+                        <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
+                            Filter word found
+                        </div>
+                    )}
+                </div>
+                {additionalCommentFilterWordFound && (
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="additionalCommentOverrideFilter"
+                            checked={additionalCommentOverrideFilter}
+                            onChange={(e) => setAdditionalCommentOverrideFilter(e.target.checked)}
+                            className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
+                        />
+                        <label htmlFor="additionalCommentOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                    </div>
+                )}
+            </div>
             <textarea
               value={additionalComment}
               onChange={(e) => setAdditionalComment(e.target.value)}
-              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2"
+              className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 px-3 py-2 mt-1"
             />
-          </div>
-          {/* SUBMIT button */}
-          <div className="mt-4 space-y-2">
-            <button
-              type="button"
-              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold disabled:opacity-60"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? "SUBMITTING..." : "SUBMIT"}
-            </button>
-            {submitOk ? (
-              <div className="text-green-400 text-sm">{submitOk}</div>
-            ) : null}
-            {submitError ? (
-              <div className="text-red-400 text-sm">{submitError}</div>
-            ) : null}
           </div>
         </div>
 
@@ -887,14 +1087,9 @@ const handleSourceSelect = (source) => {
                 </span>
               </span>
             </div>
-            <select
-              value={chatChannel}
-              onChange={(e) => setChatChannel(e.target.value)}
-              className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-2"
-            >
-              <option>513th-idsg-test</option>
-              <option>513th_mibt_osint_cui</option>
-            </select>
+            <div className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3 flex items-center">
+              <p className="text-sm text-slate-200">{chatChannel}</p>
+            </div>
           </div>
 
           {/* 2. Chat Output */}
@@ -929,10 +1124,14 @@ const handleSourceSelect = (source) => {
                 </button>
                 <button
                   type="button"
-                  className="flex-1 h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                  onClick={() => copy(chatOutput)}
+                  className={`flex-1 h-9 rounded-md bg-slate-800 border transition-all ${
+                    copySuccess === 'chat'
+                      ? 'border-green-500 text-white'
+                      : 'border-green-400 text-green-400'
+                  }`}
+                  onClick={() => copy(chatOutput, 'chat')}
                 >
-                  Copy Chat Output
+                  {copySuccess === 'chat' ? 'Copied!' : 'Copy Chat Output'}
                 </button>
               </div>
               {chatError ? <div className="text-red-400 text-sm">{chatError}</div> : null}
@@ -950,10 +1149,14 @@ const handleSourceSelect = (source) => {
             <div className="mt-2">
               <button
                 type="button"
-                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                onClick={() => copy(reportOutput)}
+                className={`w-full h-9 rounded-md bg-slate-800 border transition-all ${
+                  copySuccess === 'report'
+                    ? 'border-green-500 text-white'
+                    : 'border-green-400 text-green-400'
+                }`}
+                onClick={() => copy(reportOutput, 'report')}
               >
-                Copy Report Output
+                {copySuccess === 'report' ? 'Copied!' : 'Copy Report Output'}
               </button>
             </div>
           </div>
@@ -969,12 +1172,33 @@ const handleSourceSelect = (source) => {
             <div className="mt-2">
               <button
                 type="button"
-                className="w-full h-9 rounded-md bg-slate-800 border border-green-400 text-green-400"
-                onClick={() => copy(citationOutput)}
+                className={`w-full h-9 rounded-md bg-slate-800 border transition-all ${
+                  copySuccess === 'citation'
+                    ? 'border-green-500 text-white'
+                    : 'border-green-400 text-green-400'
+                }`}
+                onClick={() => copy(citationOutput, 'citation')}
               >
-                Copy Citation Output
+                {copySuccess === 'citation' ? 'Copied!' : 'Copy Citation Output'}
               </button>
             </div>
+          </div>
+          {/* SUBMIT button */}
+          <div className="mt-4 space-y-2">
+            <button
+              type="button"
+              className="w-full h-10 rounded-md bg-blue-600 text-white font-bold disabled:opacity-60"
+              onClick={handleSubmit}
+              disabled={submitting || !!submitOk}
+            >
+              {submitting ? "SUBMITTING..." : "SUBMIT"}
+            </button>
+            {submitOk ? (
+              <div className="text-green-400 text-sm">{submitOk}</div>
+            ) : null}
+            {submitError ? (
+              <div className="text-red-400 text-sm">{submitError}</div>
+            ) : null}
           </div>
         </div>
       </div>

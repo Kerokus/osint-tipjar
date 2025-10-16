@@ -12,18 +12,6 @@ function slugify(s) {
     .replace(/^_+|_+$/g, "");
 }
 
-// ADDED: Helper function from CreateReport.jsx to format the DTG
-function makeDTG(dateStr, timeStr) {
-  // Inputs expected as: dateStr = DDMMMYY, timeStr = HHmm (UTC)
-  if (!dateStr || dateStr.length < 7 || !timeStr || timeStr.length < 4) return "";
-  const DD = dateStr.slice(0, 2);
-  const MMM = dateStr.slice(2, 5).toUpperCase();
-  const YY = dateStr.slice(5, 7);
-  const HH = timeStr.slice(0, 2);
-  const MM = timeStr.slice(2, 4);
-  return `${DD}${HH}${MM}Z${MMM}${YY}`;
-}
-
 export default function EditReport({ report, onClose, onSaveSuccess }) {
   
   const [formData, setFormData] = useState({ ...report });
@@ -87,23 +75,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
         setCountries(list);
       });
   }, [formData.macom]);
-
-  // ADDED: useEffect to automatically update the report title when its constituent parts change.
-  useEffect(() => {
-    const { date_of_information, time, country, location, created_by } = formData;
-    const dtg = makeDTG(date_of_information, time);
-    const titleParts = [
-      slugify(dtg),
-      slugify(country),
-      slugify(location),
-      slugify(created_by),
-    ].filter(Boolean);
-    const newTitle = titleParts.join("_") || "UNTITLED";
-
-    if (newTitle !== formData.title) {
-        setFormData(prev => ({ ...prev, title: newTitle }));
-    }
-  }, [formData.date_of_information, formData.time, formData.country, formData.location, formData.created_by, formData.title]);
 
 
   // --- HANDLERS ---
@@ -190,7 +161,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
       onSaveSuccess();
       onClose();
 
-    } catch (err) { 
+    } catch (err) {
       setError(String(err).replace(/^Error:\s*/, ''));
     } finally {
       setIsSaving(false);
@@ -218,21 +189,17 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 space-y-4">
-          {/* MODIFIED: Display the dynamic title */}
-          <h2 className="text-xl font-bold text-slate-100 break-all">Editing Report: {formData.title}</h2>
+          <h2 className="text-xl font-bold text-slate-100">Editing Report: {report.title}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-600">
             {/* Left Column */}
             <div className="space-y-4">
-              {/* ADDED: Inputs for date and time */}
-              <Input label="Date of Information (DDMMMYY)" name="date_of_information" value={formData.date_of_information || ""} onChange={handleInputChange} />
-              <Input label="Time (HHmmZ)" name="time" value={formData.time || ""} onChange={handleInputChange} />
-
               <Dropdown label="MACOM" name="macom" value={formData.macom} onChange={handleInputChange}>
                 {macoms.map(m => <option key={m} value={m}>{m}</option>)}
               </Dropdown>
               <Dropdown label="Country" name="country" value={formData.country} onChange={handleInputChange}>
                 <option value="">Select Country</option>
+                {/* Map over objects, use name for key, and display name + code */}
                 {countries.map(c => (
                   <option key={c.name} value={c.name}>
                     {`${c.name} (${c.code})`}
