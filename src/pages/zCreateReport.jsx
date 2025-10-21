@@ -7,7 +7,7 @@ import { findSourceByName, getDirtyWords, usperCheck, classifyImage } from "../c
 // Helper functions for SectionA
 function formatDDMMMYY(dateUtc) {
   const d = dateUtc.getUTCDate().toString().padStart(2, "0");
-  const mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateUtc.getUTCMonth()];
+  const mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL", "AUG","SEP","OCT","NOV","DEC"][dateUtc.getUTCMonth()];
   const y = dateUtc.getUTCFullYear().toString().slice(-2);
   return `${d}${mon}${y}`;
 }
@@ -128,6 +128,12 @@ export default function CreateReport() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitOk, setSubmitOk] = useState("");
+
+  // State for manual and automatic classification
+  const [manualOverallClass, setManualOverallClass] = useState("U");
+  const [autoReportBodyClass, setAutoReportBodyClass] = useState("U");
+  const [manualCollectorClass, setManualCollectorClass] = useState("U");
+  const [autoCollectorClass, setAutoCollectorClass] = useState("U");
   
   // Submit state for chat message
   const [sendingChat, setSendingChat] = useState(false);
@@ -153,8 +159,6 @@ export default function CreateReport() {
   };
 
   const handleClassifyImage = async (classification) => {
-    console.log("handleClassifyImage called with:", classification);
-    console.log("Current originalImgFile state:", originalImgFile);
     if (!originalImgFile) {
       alert("Please upload an image first.");
       return;
@@ -164,7 +168,6 @@ export default function CreateReport() {
       const classifiedFile = await classifyImage(originalImgFile, classification);
       setImgFile(classifiedFile); 
       setImageClass(classification);
-      setOverallClass((prev) => maxClass(prev, collectorClass, classification));
     } catch (error) {
       console.error("Failed to classify image:", error);
       alert("An error occurred while adding the classification banner.");
@@ -184,7 +187,8 @@ export default function CreateReport() {
   useEffect(() => {
     if (!dirtyWords.length || !reportBody) {
         setFilterWordFound(false);
-        setOverrideFilter(false); // Reset override when no word is found
+        setOverrideFilter(false);
+        setAutoReportBodyClass("U"); // Reset auto class
         return;
     }
 
@@ -205,23 +209,18 @@ export default function CreateReport() {
       setOverrideFilter(false); // Reset if words are removed
     }
 
-    // Only force classification up if a word is found AND the override is not checked
-    if (wordFound && !overrideFilter) {
-        setOverallClass(maxClass(collectorClass, highestClassification));
-    }
+    // Set the auto class based on whether a word is found and not overridden
+    const finalReportBodyClass = (wordFound && !overrideFilter) ? highestClassification : "U";
+    setAutoReportBodyClass(finalReportBodyClass);
+
   }, [reportBody, dirtyWords, overrideFilter, maxClass]);
-
-  useEffect(() => {
-    setOverallClass((prevClass) => maxClass(prevClass, collectorClass, imageClass));
-  }, [collectorClass, imageClass, maxClass]);
-
 
   // Effect to check for dirty words in the source/additional comments and adjust collectorClass
   useEffect(() => {
-    // Exit if there are no words to check against
     if (!dirtyWords.length) {
         setSourceFilterWordFound(false);
         setAdditionalCommentFilterWordFound(false);
+        setAutoCollectorClass("U");
         return;
     }
 
@@ -230,40 +229,32 @@ export default function CreateReport() {
     let classFromSource = "U";
     let classFromComment = "U";
 
-    // 1. Loop through words to find the highest classification in EACH input separately
     for (const word of dirtyWords) {
         const escapedWord = escapeRegex(word.dirty_word);
         const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
 
-        // Check the source description field
         if (regex.test(sourceDescription)) {
             foundInSource = true;
             classFromSource = maxClass(classFromSource, word.word_classification);
         }
 
-        // Check the additional comment field
         if (regex.test(additionalComment)) {
             foundInComment = true;
             classFromComment = maxClass(classFromComment, word.word_classification);
         }
     }
 
-    // Update the state to show/hide the filter warnings
     setSourceFilterWordFound(foundInSource);
     setAdditionalCommentFilterWordFound(foundInComment);
 
-    // Reset override checkboxes if words are removed from the text areas
     if (!foundInSource) setSourceOverrideFilter(false);
-    if (!foundInComment) setAdditionalCommentFilterWordFound(false);
+    if (!foundInComment) setAdditionalCommentOverrideFilter(false);
 
-    // 2. Determine the final classification based ONLY on non-overridden inputs
     const effectiveClassFromSource = !sourceOverrideFilter ? classFromSource : "U";
     const effectiveClassFromComment = !additionalCommentOverrideFilter ? classFromComment : "U";
-    
-    // 3. The final class is the highest of the two effective classifications
     const finalClass = maxClass(effectiveClassFromSource, effectiveClassFromComment);
 
-    setCollectorClass((prevClass) => maxClass(prevClass, finalClass));
+    setAutoCollectorClass(finalClass);
 
   }, [
     sourceDescription, 
@@ -274,6 +265,17 @@ export default function CreateReport() {
     maxClass
   ]);
   
+  // New "Combiner" effects
+  useEffect(() => {
+    // The final collectorClass is the higher of the manual and auto settings
+    setCollectorClass(maxClass(manualCollectorClass, autoCollectorClass));
+  }, [manualCollectorClass, autoCollectorClass, maxClass]);
+
+  useEffect(() => {
+    // The final overallClass is the highest of all its inputs
+    setOverallClass(maxClass(manualOverallClass, autoReportBodyClass, collectorClass, imageClass));
+  }, [manualOverallClass, autoReportBodyClass, collectorClass, imageClass, maxClass]);
+
   //If the user selects "USPER" it will remove anything in the Source Description field.
   useEffect(() => {
     if (usper) {
@@ -336,7 +338,6 @@ export default function CreateReport() {
           throw new Error("API URL or Key is missing from environment variables.");
         }
 
-        // Use URLSearchParams to handle encoding of query parameters correctly
         const params = new URLSearchParams({
           country: country,
           location: location,
@@ -372,7 +373,6 @@ export default function CreateReport() {
 
   const sourceSearchDebounceRef = useRef(null);
     useEffect(() => {
-    // Clear status if sourceName is empty
     if (!sourceName.trim()) {
         setSourceExists(false);
         setExistingSourceId(null);
@@ -385,38 +385,33 @@ export default function CreateReport() {
         clearTimeout(sourceSearchDebounceRef.current);
     }
 
-    // Set a 1-second debounce timer
     sourceSearchDebounceRef.current = setTimeout(async () => {
         try {
         const results = await findSourceByName(sourceName);
         
         if (results && results.length === 1) {
-            // CASE 1: Exactly one match found
             const source = results[0];
             setSourceDescription(source.source_description || "");
             setSourceType(source.source_platform || "Website");
             setExistingSourceId(source.id);
             setSourceExists(true);
-            setTreatAsNewSource(false); // <<< RESET STATE
+            setTreatAsNewSource(false);
             setOriginalSourceData({
                 description: source.source_description || "",
                 platform: source.source_platform || "Website"
             });
-            setShowSourceModal(false); // Ensure modal is closed
+            setShowSourceModal(false);
         } else if (results && results.length > 1) {
-            // CASE 2: Multiple matches found
             setMatchingSources(results);
-            setShowSourceModal(true); // Open the modal
+            setShowSourceModal(true);
         } else {
-            // CASE 3: No match found (or an error occurred)
             setSourceExists(false);
             setExistingSourceId(null);
             setOriginalSourceData(null);
-            setTreatAsNewSource(false); // <<< RESET STATE
+            setTreatAsNewSource(false);
         }
         } catch (error) {
         console.error("Error finding source:", error);
-        // Optionally set an error state to show the user
         }
     }, 1000);
 
@@ -428,12 +423,12 @@ const handleSourceSelect = (source) => {
     setSourceType(source.source_platform || "Website");
     setExistingSourceId(source.id);
     setSourceExists(true);
-    setTreatAsNewSource(false); // <<< RESET STATE
+    setTreatAsNewSource(false);
     setOriginalSourceData({
         description: source.source_description || "",
         platform: source.source_platform || "Website"
     });
-    setShowSourceModal(false); // Close the modal after selection
+    setShowSourceModal(false);
 };
 
   const onDrop = (e) => {
@@ -446,27 +441,22 @@ const handleSourceSelect = (source) => {
     if (f) handleSetImgFile(f);
   };
 
-  // Copy to clipboard helper
   const copy = async (text, type) => {
     try {
       await navigator.clipboard.writeText(text ?? "");
-      setCopySuccess(type); // Set which button was clicked
-      setTimeout(() => setCopySuccess(''), 10000); // Clear after 2 seconds
+      setCopySuccess(type);
+      setTimeout(() => setCopySuccess(''), 10000);
     } catch (e) {
       console.error("Copy failed:", e);
-      // Optionally handle copy error feedback here
     }
   };
 
-  //helper function for Citation Report
   function cleanSourceType(t) {
     if (!t) return "";
     return t.trim().replace(/\s*User$/i, "");
   }
 
-  // State reset when the user hits the "Clear Form" button
   const clearForm = () => {
-    // Section A state reset
     setMacom("CENTCOM");
     setCountry("");
     setLocation("");
@@ -475,7 +465,6 @@ const handleSourceSelect = (source) => {
     setImgFile(null);
     setOriginalImgFile(null);
     setImageClass("U");
-    // Section B state reset
     setUsper(false);
     setUspi(false);
     setSourceType("Website");
@@ -484,13 +473,15 @@ const handleSourceSelect = (source) => {
     setUid("");
     setArticleTitle("N/A");
     setArticleAuthor("N/A");
-    // Column 1 state reset
     setReportBody("");
     setCollectorClass("U");
     setSourceDescription("");
     setAdditionalComment("");
     setOverallClass("U");
-    // Column 2 state reset
+    setManualOverallClass("U");
+    setAutoReportBodyClass("U");
+    setManualCollectorClass("U");
+    setAutoCollectorClass("U");
     setChatChannel(chatChannels["U"]); 
     setChatOutput("");
     setReportOutput("");
@@ -507,7 +498,6 @@ const handleSourceSelect = (source) => {
     setSubmitError("");
   };
 
-  // Auto-generate Chat Output from current form state 
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -524,7 +514,7 @@ const handleSourceSelect = (source) => {
 
     const chat = `(${oc}) ${dtg} (${mgrsDisp}) ${srcType} ${usPerson}${srcName} | (U) ${action} ${body} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${cinDisp} | (${cc}) COLLECTOR COMMENT: ${comment} ${adtlComment} (${oc})`;
     setChatOutput(chat.trim());
-    setChatMessageSent(false); // Reset sent status if underlying data changes
+    setChatMessageSent(false);
   }, [
     overallClass,
     usper,
@@ -541,7 +531,6 @@ const handleSourceSelect = (source) => {
     additionalComment
   ]);
 
-  // Auto-generate Report Output from current form state ===
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -572,7 +561,6 @@ const handleSourceSelect = (source) => {
     additionalComment
   ]);
 
-  // Auto-generate Citation Output from current form state
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const dtg = makeDTG(dateStr, timeStr);
@@ -593,7 +581,6 @@ const handleSourceSelect = (source) => {
     setCitationOutput(citation.trim());
   }, [overallClass, dateStr, timeStr, sourceType, sourceName, uid, usper, uspi, articleAuthor, articleTitle, didWhat]);  
 
-  // Sent to ChatSurfer
   async function handleChatSubmit() {
     if (!reportBody.trim()) {
       alert("Please fill out the Report Body before sending a message.");
@@ -618,7 +605,7 @@ const handleSourceSelect = (source) => {
       const payload = {
         classification: "UNCLASSIFIED",
         message: chatOutput,
-        domainId: "chatsurferxmppunclass", // <---- I got this from the chatsurfer docs https://chatsurfer.nro.mil/apidocs#tag/(U)-Chat-Messages
+        domainId: "chatsurferxmppunclass",
         nickName: displayName,
         roomName: chatChannel
       };
@@ -647,15 +634,13 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // Submit the report to the backend
   async function handleSubmit() {
-    // 1. Check if the ChatSurfer message was sent and warn the user if not.
     if (!chatMessageSent) {
       const proceed = window.confirm(
         "ChatSurfer Message was not sent. Would you like to submit anyway?"
       );
       if (!proceed) {
-        return; // Stop the submission if the user clicks "Cancel"
+        return;
       }
     }
 
@@ -663,7 +648,6 @@ const handleSourceSelect = (source) => {
     setSubmitError("");
     setSubmitting(true);
     try {
-      // Build DTG and title
       const dtg = makeDTG(dateStr, timeStr);
       const titleParts = [
         slugify(dtg),
@@ -674,7 +658,6 @@ const handleSourceSelect = (source) => {
       const report_title = titleParts.join("_") || "UNTITLED";
       const filename = `${report_title}_IMAGE`;
 
-      // Set Environment
       const API_URL = import.meta.env.VITE_API_URL;
       const API_KEY = import.meta.env.VITE_API_KEY;
       const IMG_URL = import.meta.env.VITE_IMAGE_UPLOAD_URL;
@@ -686,7 +669,6 @@ const handleSourceSelect = (source) => {
         throw new Error("Image upload env vars missing");
       }
 
-      // Optional image upload first to get stable URL
       let image_url = "";
       if (imgFile) {
         const uploadEndpoint = `${String(IMG_URL).replace(
@@ -705,10 +687,9 @@ const handleSourceSelect = (source) => {
           const t = await putRes.text().catch(() => "");
           throw new Error(`Image upload failed: ${putRes.status} ${t}`);
         }
-        image_url = uploadEndpoint; // use the upload URL as the reference
+        image_url = uploadEndpoint;
       }
 
-      // Build payload for /reports endpoint
       const reportPayload = {
         overall_classification: overallClass,
         title: report_title,
@@ -741,7 +722,6 @@ const handleSourceSelect = (source) => {
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       };
       
-      // === Main Report Submission ===
       const reportRes = await fetch(`${String(API_URL).replace(/\/+$/, "")}/reports`, {
         method: "POST",
         headers: headers,
@@ -754,8 +734,6 @@ const handleSourceSelect = (source) => {
       }
       const reportData = await reportRes.json().catch(() => ({}));
 
-      // 2. If USPER is true, we are done. No source data is submitted.
-      // Future dev: DO NOT SEND USPER DATA TO THE BACKEND!
       if (usper) {
         setSubmitOk(
           `USPER Report created${reportData?.id ? " with id " + reportData.id : ""}.`
@@ -763,19 +741,16 @@ const handleSourceSelect = (source) => {
         return; 
       }
 
-      // 3 & 4. If not USPER, proceed with source logic if a source name exists.
       if (sourceName.trim()) {
         let sourceEndpoint = `${String(API_URL).replace(/\/+$/, "")}/sources`;
         let sourcePayload;
         let sourceMethod;
 
         if (sourceExists && existingSourceId && !treatAsNewSource) {
-          // Case 1: Source exists AND we are NOT treating it as new. Check if an update is needed.
           const descriptionChanged = originalSourceData?.description !== sourceDescription;
           const platformChanged = originalSourceData?.platform !== sourceType;
 
           if (descriptionChanged || platformChanged) {
-            // Data has changed, prepare a PUT request to update it.
             sourceMethod = "PUT";
             sourceEndpoint += `/${existingSourceId}`;
             sourcePayload = {
@@ -785,9 +760,7 @@ const handleSourceSelect = (source) => {
               modified_by: cin, 
             };
           }
-          // If nothing changed, sourceMethod and sourcePayload remain undefined, skipping the fetch.
         } else {
-          // Case 2: Source does not exist OR we are treating it as a new one. Prepare a POST request.
           sourceMethod = "POST";
           sourcePayload = {
             source_name: sourceName,
@@ -797,7 +770,6 @@ const handleSourceSelect = (source) => {
           };
         }
 
-        // Only perform the fetch if a method was set (i.e., a create or an update is needed)
         if (sourceMethod) {
           const sourceRes = await fetch(sourceEndpoint, {
             method: sourceMethod,
@@ -807,7 +779,6 @@ const handleSourceSelect = (source) => {
 
           if (!sourceRes.ok) {
             const text = await sourceRes.text().catch(() => "");
-            // The report was created, but the source operation failed. Show a specific error.
             throw new Error(
               `Report created, but source ${sourceMethod} failed: ${sourceRes.status} ${text}`
             );
@@ -845,8 +816,7 @@ const handleSourceSelect = (source) => {
     return null;
   })();
 
-  // A simple modal component to display choices
-    const SourceSelectionModal = () => (
+  const SourceSelectionModal = () => (
     showSourceModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
         <div className="bg-slate-800 rounded-lg p-6 w-full max-w-2xl border border-slate-600">
@@ -887,10 +857,9 @@ const handleSourceSelect = (source) => {
       <SourceSelectionModal />
       <SectionHeader
         initialValue={overallClass}
-        onChange={(p) => setOverallClass(maxClass(p.value, collectorClass))}
+        onChange={(p) => setManualOverallClass(p.value)}
       />
       {/* I FUCKING HATE PROPS */}
-      {/* Pass all necessary state and functions down to SectionA as props */}
       <SectionA
         dateStr={dateStr}
         setDateStr={setDateStr}
@@ -917,7 +886,6 @@ const handleSourceSelect = (source) => {
         onClassifyImage={handleClassifyImage}
       />
       <hr className="my-6 w-full border-sky-300" />
-      {/* Pass all necessary state and functions down to SectionB as props */}
       <SectionB
         usper={usper}
         setUsper={setUsper}
@@ -982,8 +950,8 @@ const handleSourceSelect = (source) => {
                 <SectionHeader
                   initialValue={collectorClass}
                   onChange={(p) => {
-                    setCollectorClass(p.value);
-                    setOverallClass((prev) => maxClass(prev, p.value));
+                    setManualCollectorClass(p.value);
+                    setManualOverallClass((prev) => maxClass(prev, p.value));
                   }}
                 />
               </div>
@@ -993,7 +961,6 @@ const handleSourceSelect = (source) => {
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
                     <label className="text-xs">Source Description:</label>
-                    {/* This is the new badge that will now appear */}
                     {sourceFilterWordFound && (
                         <div className="ml-2 inline-flex items-center justify-center h-5 px-2 rounded-md bg-yellow-500 text-black text-xs font-bold select-none">
                             Filter word found
@@ -1005,7 +972,7 @@ const handleSourceSelect = (source) => {
                                 type="checkbox"
                                 id="newSourceCheckbox"
                                 checked={treatAsNewSource}
-                                onChange={(e) => setTreatAsNew-Source(e.target.checked)}
+                                onChange={(e) => setTreatAsNewSource(e.target.checked)}
                                 className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
                             />
                             <label htmlFor="newSourceCheckbox" className="ml-2 text-xs font-medium text-slate-300">New Source</label>
@@ -1015,7 +982,6 @@ const handleSourceSelect = (source) => {
                 {sourceBadge}
               </div>
               
-              {/* This is the new override checkbox that will now appear */}
               {sourceFilterWordFound && (
                   <div className="flex items-center justify-end mb-2">
                       <input
@@ -1025,7 +991,7 @@ const handleSourceSelect = (source) => {
                           onChange={(e) => setSourceOverrideFilter(e.target.checked)}
                           className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600"
                       />
-                      <label htmlFor="SourceOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
+                      <label htmlFor="sourceOverrideFilter" className="ml-2 text-xs font-medium text-slate-300">Override Filter</label>
                   </div>
               )}
 
@@ -1096,7 +1062,6 @@ const handleSourceSelect = (source) => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-xs">Chat Output</label>
-              {/* Conditional status badge */}
               {chatMessageSent ? (
                 <div className="inline-flex items-center justify-center h-7 px-3 rounded-md bg-green-500 text-black text-xs font-extrabold select-none">
                   Message sent
@@ -1202,7 +1167,6 @@ const handleSourceSelect = (source) => {
           </div>
         </div>
       </div>
-      {/* === End of two-column section === */}
     </div>
   );
 }

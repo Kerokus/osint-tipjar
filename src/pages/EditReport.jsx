@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
-import SectionHeader from "../components/report_sections/SectionHeader"; // Re-used for classification dropdowns
+import SectionHeader from "../components/report_sections/SectionHeader";
+// === NEW: Import the classification function ===
+import { classifyImage } from "../components/supportFunctions";
 
 // Basic sanitizer for building filenames
 function slugify(s) {
@@ -12,9 +14,8 @@ function slugify(s) {
     .replace(/^_+|_+$/g, "");
 }
 
-// ADDED: Helper function from CreateReport.jsx to format the DTG
+// Helper function from CreateReport.jsx to format the DTG
 function makeDTG(dateStr, timeStr) {
-  // Inputs expected as: dateStr = DDMMMYY, timeStr = HHmm (UTC)
   if (!dateStr || dateStr.length < 7 || !timeStr || timeStr.length < 4) return "";
   const DD = dateStr.slice(0, 2);
   const MMM = dateStr.slice(2, 5).toUpperCase();
@@ -27,10 +28,18 @@ function makeDTG(dateStr, timeStr) {
 export default function EditReport({ report, onClose, onSaveSuccess }) {
   
   const [formData, setFormData] = useState({ ...report });
-  const [newImageFile, setNewImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  
+  // State for existing image
   const [imageBlobUrl, setImageBlobUrl] = useState(null);
+
+  // === NEW: State for new image classification ===
+  const [newImageFile, setNewImageFile] = useState(null);
+  const [originalNewImageFile, setOriginalNewImageFile] = useState(null);
+  const [newImagePreviewUrl, setNewImagePreviewUrl] = useState(null);
+  const [imageClass, setImageClass] = useState("U");
+  const [imageHasBeenClassified, setImageHasBeenClassified] = useState(false);
 
   // State for the dropdowns
   const [macoms, setMacoms] = useState([]);
@@ -39,13 +48,12 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
   const rank = { U: 0, CUI: 1, CUIREL: 2 };
   const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
   
-  // Environment
   const API_URL = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = useMemo(() => import.meta.env.VITE_API_KEY, []);
   const IMG_URL = useMemo(() => import.meta.env.VITE_IMAGE_UPLOAD_URL, []);
   const IMG_API_KEY = useMemo(() => import.meta.env.VITE_IMAGE_UPLOAD_API_KEY, []);
 
-  // Fetch image and create a blob URL
+  // Fetch existing image and create a blob URL
   useEffect(() => {
     if (!formData.image_url) return;
     let cancel = false;
@@ -55,15 +63,24 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
         if (!res.ok) throw new Error("Image fetch failed");
         const blob = await res.blob();
         if (!cancel) setImageBlobUrl(URL.createObjectURL(blob));
-      } catch (err) { 
-        console.error(err); 
-      }
+      } catch (err) { console.error(err); }
     })();
     return () => { 
       cancel = true; 
       if (imageBlobUrl) URL.revokeObjectURL(imageBlobUrl); 
     };
   }, [formData.image_url, IMG_API_KEY]);
+
+  // Create a preview URL for the new image file
+  useEffect(() => {
+    if (!newImageFile) {
+      setNewImagePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(newImageFile);
+    setNewImagePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [newImageFile]);
 
   // Populate MACOM and countries on mount
   useEffect(() => {
@@ -88,7 +105,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
       });
   }, [formData.macom]);
 
-  // ADDED: useEffect to automatically update the report title when its constituent parts change.
+  // Automatically update the report title
   useEffect(() => {
     const { date_of_information, time, country, location, created_by } = formData;
     const dtg = makeDTG(date_of_information, time);
@@ -105,6 +122,21 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     }
   }, [formData.date_of_information, formData.time, formData.country, formData.location, formData.created_by, formData.title]);
 
+  // === MODIFIED: Update overall classification based on collector AND new image class ===
+  useEffect(() => {
+    const currentOverall = formData.overall_classification;
+    const collectorClass = formData.collector_classification;
+    // The highest of the manual setting, the collector comment, and the new image
+    const newOverall = maxClass(currentOverall, collectorClass, imageClass);
+    
+    if (newOverall !== currentOverall) {
+      setFormData(prev => ({
+          ...prev,
+          overall_classification: newOverall
+      }));
+    }
+  }, [formData.collector_classification, formData.overall_classification, imageClass, maxClass]);
+
 
   // --- HANDLERS ---
 
@@ -112,19 +144,38 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     const { name, value, type, checked } = e.target;
     setFormData(prev => {
         const newState = { ...prev, [name]: type === 'checkbox' ? checked : value };
-        // When MACOM changes, reset the country
-        if (name === 'macom') {
-            newState.country = "";
-        }
+        if (name === 'macom') { newState.country = ""; }
         return newState;
     });
+  };
+
+  // === NEW: Handler for when a new image file is chosen ===
+  const handleSetNewImageFile = (file) => {
+    if (!file) return;
+    setNewImageFile(file);
+    setOriginalNewImageFile(file);
+    setImageClass("U");
+    setImageHasBeenClassified(false);
+  };
+
+  // === NEW: Handler to classify the newly uploaded image ===
+  const handleClassifyImage = async (classification) => {
+    if (!originalNewImageFile) return;
+    try {
+      const classifiedFile = await classifyImage(originalNewImageFile, classification);
+      setNewImageFile(classifiedFile);
+      setImageClass(classification);
+      setImageHasBeenClassified(true);
+    } catch (error) {
+      console.error("Failed to classify image:", error);
+      setError("An error occurred while adding the classification banner.");
+    }
   };
 
   const handleImageDelete = async () => {
     if (!formData.image_url || !window.confirm("Are you sure you want to permanently delete this image?")) {
       return;
     }
-
     try {
       const res = await fetch(formData.image_url, {
         method: 'DELETE',
@@ -142,6 +193,13 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     e.preventDefault();
     setIsSaving(true);
     setError("");
+
+    // === NEW: Validation check for new images ===
+    if (newImageFile && !imageHasBeenClassified) {
+      setError("Please classify the new image before saving.");
+      setIsSaving(false);
+      return;
+    }
 
     try {
       let imageUrl = formData.image_url;
@@ -196,19 +254,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
       setIsSaving(false);
     }
   };
-  
-  useEffect(() => {
-    const currentOverall = formData.overall_classification;
-    const currentCollector = formData.collector_classification;
-    const newOverall = maxClass(currentOverall, currentCollector);
-    
-    if (newOverall !== currentOverall) {
-      setFormData(prev => ({
-          ...prev,
-          overall_classification: newOverall
-      }));
-    }
-  }, [formData.collector_classification, formData.overall_classification, maxClass]);
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -218,28 +263,19 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 space-y-4">
-          {/* MODIFIED: Display the dynamic title */}
           <h2 className="text-xl font-bold text-slate-100 break-all">Editing Report: {formData.title}</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-600">
             {/* Left Column */}
             <div className="space-y-4">
-              {/* ADDED: Inputs for date and time */}
               <Input label="Date of Information (DDMMMYY)" name="date_of_information" value={formData.date_of_information || ""} onChange={handleInputChange} />
               <Input label="Time (HHmmZ)" name="time" value={formData.time || ""} onChange={handleInputChange} />
-
               <Dropdown label="MACOM" name="macom" value={formData.macom} onChange={handleInputChange}>
                 {macoms.map(m => <option key={m} value={m}>{m}</option>)}
               </Dropdown>
               <Dropdown label="Country" name="country" value={formData.country} onChange={handleInputChange}>
                 <option value="">Select Country</option>
-                {countries.map(c => (
-                  <option key={c.name} value={c.name}>
-                    {`${c.name} (${c.code})`}
-                  </option>
-                ))}
+                {countries.map(c => ( <option key={c.name} value={c.name}>{`${c.name} (${c.code})`}</option> ))}
               </Dropdown>
-
               <Input label="Location" name="location" value={formData.location || ""} onChange={handleInputChange} />
               <Input label="MGRS" name="mgrs" value={formData.mgrs || ""} onChange={handleInputChange} />
               <Textarea label="Report Body" name="report_body" value={formData.report_body || ""} onChange={handleInputChange} />
@@ -249,21 +285,14 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Overall Classification</label>
-                <SectionHeader 
-                  initialValue={formData.overall_classification} 
-                  onChange={(p) => setFormData(prev => ({...prev, overall_classification: p.value}))} 
-                />
+                <SectionHeader initialValue={formData.overall_classification} onChange={(p) => setFormData(prev => ({...prev, overall_classification: p.value}))} />
               </div>
                <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Collector Classification</label>
-                <SectionHeader 
-                  initialValue={formData.collector_classification} 
-                  onChange={(p) => setFormData(prev => ({...prev, collector_classification: p.value}))} 
-                />
+                <SectionHeader initialValue={formData.collector_classification} onChange={(p) => setFormData(prev => ({...prev, collector_classification: p.value}))} />
               </div>
               <Textarea label="Source Description" name="source_description" value={formData.source_description || ""} onChange={handleInputChange} />
               <Textarea label="Additional Comment Text" name="additional_comment_text" value={formData.additional_comment_text || ""} onChange={handleInputChange} />
-              
               <div className="flex items-center gap-4">
                 <Checkbox label="USPER" name="is_usper" checked={!!formData.is_usper} onChange={handleInputChange} />
                 <Checkbox label="USPI" name="has_uspi" checked={!!formData.has_uspi} onChange={handleInputChange} />
@@ -271,6 +300,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
               
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Image</label>
+                {/* === MODIFIED: Logic to show existing image, new image preview, or upload input === */}
                 {formData.image_url && imageBlobUrl ? (
                   <div className="space-y-2">
                     <div className="w-full h-48 bg-slate-900 rounded-md border border-slate-600 flex items-center justify-center overflow-hidden">
@@ -278,8 +308,22 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
                     </div>
                     <button type="button" onClick={handleImageDelete} className="w-full h-8 text-sm rounded-md bg-red-800 hover:bg-red-700">Delete Image</button>
                   </div>
+                ) : newImageFile && newImagePreviewUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative w-full h-48 bg-slate-900 rounded-md border border-slate-600 flex items-center justify-center overflow-hidden">
+                      <img src={newImagePreviewUrl} alt="New image preview" className="object-contain max-h-full max-w-full" />
+                    </div>
+                     {/* Classification Buttons appear here for the new image */}
+                    <div className="flex justify-around items-center p-2 bg-slate-900 rounded-md">
+                      <span className="text-xs font-bold text-white">CLASSIFY:</span>
+                      <button type="button" onClick={() => handleClassifyImage('U')} className="bg-green-600 text-white text-xs px-3 py-1 rounded-md hover:brightness-110">U</button>
+                      <button type="button" onClick={() => handleClassifyImage('CUI')} className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md hover:brightness-110">CUI</button>
+                      <button type="button" onClick={() => handleClassifyImage('CUIREL')} className="bg-purple-700 text-white text-xs px-3 py-1 rounded-md hover:brightness-110">CUI//REL</button>
+                    </div>
+                    <button type="button" onClick={() => setNewImageFile(null)} className="w-full h-8 text-sm rounded-md bg-slate-600 hover:bg-slate-500">Clear New Image</button>
+                  </div>
                 ) : (
-                  <input type="file" onChange={(e) => setNewImageFile(e.target.files[0])} className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-600 file:text-slate-200 hover:file:bg-slate-500" />
+                  <input type="file" onChange={(e) => handleSetNewImageFile(e.target.files[0])} className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-600 file:text-slate-200 hover:file:bg-slate-500" accept="image/*" />
                 )}
               </div>
             </div>
@@ -310,21 +354,18 @@ const Input = ({ label, ...props }) => (
     <input {...props} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
   </div>
 );
-
 const Textarea = ({ label, ...props }) => (
   <div>
     <label className="block text-xs font-medium text-slate-300 mb-1">{label}</label>
     <textarea {...props} className="w-full min-h-[120px] rounded-md bg-slate-900 border border-slate-700 p-3" />
   </div>
 );
-
 const Checkbox = ({ label, ...props }) => (
     <label className="flex items-center gap-2">
         <input type="checkbox" {...props} className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-blue-500 focus:ring-blue-600" />
         <span className="text-sm font-medium text-slate-300">{label}</span>
     </label>
 );
-
 const Dropdown = ({ label, children, ...props }) => (
     <div>
         <label className="block text-xs font-medium text-slate-300 mb-1">{label}</label>

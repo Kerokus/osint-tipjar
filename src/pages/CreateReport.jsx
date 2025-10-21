@@ -80,7 +80,9 @@ export default function CreateReport() {
   const [loading, setLoading] = useState(false);
   const [imgFile, setImgFile] = useState(null);
   const [originalImgFile, setOriginalImgFile] = useState(null); 
-  const [imageClass, setImageClass] = useState("U"); 
+  const [imageClass, setImageClass] = useState("U");
+  // === NEW: State to track if the user has classified the image ===
+  const [imageHasBeenClassified, setImageHasBeenClassified] = useState(false);
 
   // State for Section B
   const [usper, setUsper] = useState(false);
@@ -148,16 +150,20 @@ export default function CreateReport() {
     setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
   }, [overallClass]);
 
+  // === MODIFIED: Update image classification tracking state ===
   const handleSetImgFile = (file) => {
     setImgFile(file);
     if (file) {
       setOriginalImgFile(file); 
       setImageClass("U"); 
+      setImageHasBeenClassified(false); // Reset on new image
     } else {
-      setOriginalImgFile(null); // Clear original if image is removed
+      setOriginalImgFile(null);
+      setImageHasBeenClassified(false); // Reset if image is cleared
     }
   };
 
+  // === MODIFIED: Update image classification tracking state ===
   const handleClassifyImage = async (classification) => {
     if (!originalImgFile) {
       alert("Please upload an image first.");
@@ -168,6 +174,7 @@ export default function CreateReport() {
       const classifiedFile = await classifyImage(originalImgFile, classification);
       setImgFile(classifiedFile); 
       setImageClass(classification);
+      setImageHasBeenClassified(true); // Mark as classified
     } catch (error) {
       console.error("Failed to classify image:", error);
       alert("An error occurred while adding the classification banner.");
@@ -456,6 +463,7 @@ const handleSourceSelect = (source) => {
     return t.trim().replace(/\s*User$/i, "");
   }
 
+  // === MODIFIED: Reset the new state variable here ===
   const clearForm = () => {
     setMacom("CENTCOM");
     setCountry("");
@@ -465,6 +473,7 @@ const handleSourceSelect = (source) => {
     setImgFile(null);
     setOriginalImgFile(null);
     setImageClass("U");
+    setImageHasBeenClassified(false); // Reset this
     setUsper(false);
     setUspi(false);
     setSourceType("Website");
@@ -634,7 +643,14 @@ const handleSourceSelect = (source) => {
     }
   }
 
+  // === MODIFIED: Add the validation check at the beginning of the function ===
   async function handleSubmit() {
+    // Check if an image exists but has not been explicitly classified
+    if (imgFile && !imageHasBeenClassified) {
+      alert("Please classify the uploaded image before submitting the report.");
+      return; // Stop the submission
+    }
+
     if (!chatMessageSent) {
       const proceed = window.confirm(
         "ChatSurfer Message was not sent. Would you like to submit anyway?"
