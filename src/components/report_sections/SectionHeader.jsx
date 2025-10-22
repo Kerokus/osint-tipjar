@@ -1,16 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-/**
-* Customer wants: 
-* SectionHeader
- * - Clickable classification banner
- * - Modal with three styled options
- * - Calls optional onChange({ value, label }) when selection changes
- *
- * Props:
- *  - initialValue?: "U" | "CUI" | "CUIREL"
- *  - onChange?: (payload) => void
- */
 export default function SectionHeader({ initialValue = "U", onChange }) {
   const [open, setOpen] = useState(false);
   const [classification, setClassification] = useState(initialValue);
