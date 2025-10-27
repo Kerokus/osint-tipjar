@@ -3,6 +3,8 @@ import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import MgrsTool from "../../pages/MgrsTool.jsx";
 import TimeZoneTool from "../../pages/TimeZoneTool.jsx";
 import TranslationTool from "../../pages/TranslationTool.jsx";
+import Transciption from "../../pages/Transcription.jsx";
+import TranslateDocs from "../../pages/TranslateDocs.jsx";
 
 export default function SectionB_Source({
   usper, setUsper,
@@ -33,7 +35,9 @@ export default function SectionB_Source({
   const tabs = [
     { key: "mgrs", label: "MGRS Conversion", node: <MgrsTool /> },
     { key: "dt", label: "Timezone Conversions", node: <TimeZoneTool /> },
-    { key: "tr", label: "Translate", node: <TranslationTool /> },
+    { key: "tr", label: "Translate Text", node: <TranslationTool /> },
+    { key: "td", label: "Translate Documents", node: <TranslateDocs /> },
+    { key: "ts", label: "Transciption", node: <Transciption /> },
   ];
 
   // height = depth of 4 rows
@@ -50,7 +54,7 @@ export default function SectionB_Source({
   return (
     <section>
       <div className="flex gap-4">
-        <div className="flex-none max-w-5xl" ref={formRef}>
+        <div className="flex-none max-w-4xl" ref={formRef}>
           <div className="grid grid-cols-12 gap-x-6 gap-y-2 items-center">
             {/* --- Row 1 --- */}
             <div className="col-span-12 form-row grid grid-cols-12 gap-x-6 items-center">
@@ -58,11 +62,11 @@ export default function SectionB_Source({
                 <input type="checkbox" checked={usper} onChange={(e) => setUsper(e.target.checked)} id="usper" className="h-4 w-4" />
                 <label htmlFor="usper">USPER</label>
               </div>
-              <div className="col-span-12 md:col-span-5">
+              <div className="col-span-12 md:col-span-4">
                 <label className="block text-xs">Source Name:</label>
                 <input value={sourceName} onChange={(e) => setSourceName(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
               </div>
-              <div className="col-span-12 md:col-span-6">
+              <div className="col-span-12 md:col-span-5">
                 <label className="block text-xs">UID:</label>
                 <input value={uid} onChange={handleUidChange} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
               </div>
@@ -74,13 +78,13 @@ export default function SectionB_Source({
                 <input type="checkbox" checked={uspi} onChange={(e) => setUspi(e.target.checked)} disabled={usper || isUspiLocked} id="uspi" className="h-4 w-4 disabled:opacity-50" />
                 <label htmlFor="uspi">USPI</label>
               </div>
-              <div className="col-span-12 md:col-span-5">
+              <div className="col-span-12 md:col-span-4">
                 <label className="block text-xs">Source Type</label>
                 <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
                   {sourceOptions.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
-              <div className="col-span-12 md:col-span-6">
+              <div className="col-span-12 md:col-span-5">
                 <label className="block text-xs">Article Title:</label>
                 <input value={articleTitle} onChange={(e) => setArticleTitle(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
               </div>
@@ -88,13 +92,13 @@ export default function SectionB_Source({
 
             {/* --- Row 3 --- */}
             <div className="col-span-12 form-row grid grid-cols-12 gap-x-6 items-center">
-              <div className="col-span-12 md:col-start-2 md:col-span-5">
+              <div className="col-span-12 md:col-start-2 md:col-span-4">
                 <label className="block text-xs">Did What:</label>
                 <select value={didWhat} onChange={(e) => setDidWhat(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
                   {didWhatOptions.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
-              <div className="col-span-12 md:col-span-6">
+              <div className="col-span-12 md:col-span-5">
                 <label className="block text-xs">Article Author:</label>
                 <input value={articleAuthor} onChange={(e) => setArticleAuthor(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
               </div>
