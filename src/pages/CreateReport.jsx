@@ -507,6 +507,7 @@ const handleSourceSelect = (source) => {
     setSubmitError("");
   };
 
+  //CHATSURFER REPORT OUTPUT
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -540,6 +541,7 @@ const handleSourceSelect = (source) => {
     additionalComment
   ]);
 
+  //REPORT OUTPUT
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const cc = classificationForOutput(collectorClass);
@@ -570,6 +572,7 @@ const handleSourceSelect = (source) => {
     additionalComment
   ]);
 
+  //CITATION OUTPUT
   useEffect(() => {
     const oc = classificationForOutput(overallClass);
     const dtg = makeDTG(dateStr, timeStr);

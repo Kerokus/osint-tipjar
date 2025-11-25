@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
-// A curated list of common IANA timezones.
-// (list unchanged)
+// Timezones in IANA format
+// I focused mainly on middle east zones since it's 513th, but whoever works on this in the future:
+// If you want to add more make sure it's in the date-fns-tz library.
 const timezones = [
   "UTC",
   "America/New_York",    // Eastern
   "America/Chicago",     // Central
   "America/Denver",      // Mountain
   "America/Los_Angeles", // Pacific
-  "Asia/Tokyo",
-  "Asia/Dubai",
   // Middle East
   "Asia/Baghdad",  // Iraq
   "Asia/Beirut",   // Lebanon
   "Asia/Damascus", // Syria
+  "Asia/Dubai",
   "Asia/Jerusalem", // Israel
   "Asia/Kabul",    // Afghanistan
   "Asia/Kuwait",   // Kuwait
   "Asia/Qatar",    // Qatar
   "Asia/Riyadh",   // Saudi Arabia
-  "Asia/Tehran",   // Iran  
+  "Asia/Shanghai",
+  "Asia/Tehran",   // Iran 
+  "Asia/Tokyo", 
   "Australia/Sydney",
   "Pacific/Auckland",
   "Europe/Istanbul", // Turkey

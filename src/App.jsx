@@ -4,6 +4,7 @@ import ViewAndSearch from "./pages/ViewAndSearch";
 import CreateReport from "./pages/CreateReport";
 import Sources from "./pages/Sources";
 import Login from "./pages/Login";
+import TranslateTranscribe from "./pages/TranslateTranscribe";
 import Settings from "./pages/Settings";
 import tipjarLogo from "./assets/tipjar-logo-cropped.png";
 
@@ -42,6 +43,7 @@ function App() {
     { key: "newReport", label: "Create Report" },
     { key: "sources", label: "Sources" },
     { key: "search", label: "View and Search" },
+    { key: "translateTranscribe", label: "Translate and Transcribe" },
     { key: "settings", label: "Settings" },
     ...(isAdmin ? [{ key: "admin", label: "Admin" }] : []),
   ];
@@ -217,6 +219,7 @@ function App() {
           {activeTab === "newReport" && <CreateReport />}
           {activeTab === "sources" && <Sources />}
           {activeTab === "search" && <ViewAndSearch />}
+          {activeTab === "translateTranscribe" && <TranslateTranscribe />}
           {activeTab === "settings" && <Settings />}
           {isAdmin && activeTab === "admin" && <Admin />}
         </main>

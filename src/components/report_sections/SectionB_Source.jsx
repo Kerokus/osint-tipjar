@@ -1,10 +1,8 @@
 // src/components/report_sections/SectionB_Source.jsx
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
-import MgrsTool from "../../pages/MgrsTool.jsx";
-import TimeZoneTool from "../../pages/TimeZoneTool.jsx";
-import TranslationTool from "../../pages/TranslationTool.jsx";
-import Transciption from "../../pages/Transcription.jsx";
-import TranslateDocs from "../../pages/TranslateDocs.jsx";
+import MgrsTool from "../../components/MgrsTool.jsx";
+import TimeZoneTool from "../../components/TimeZoneTool.jsx";
+import TranslationTool from "../../components/TranslationTool.jsx";
 
 export default function SectionB_Source({
   usper, setUsper,
@@ -27,7 +25,7 @@ export default function SectionB_Source({
     setUid(sanitizedValue);
   };
 
-  const sourceOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const sourceOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitta User"];
   const didWhatOptions = ["reported", "posted", "stated", "claimed", "published", "observed"];
 
   // right-pane tabs
@@ -36,8 +34,6 @@ export default function SectionB_Source({
     { key: "mgrs", label: "MGRS Conversion", node: <MgrsTool /> },
     { key: "dt", label: "Timezone Conversions", node: <TimeZoneTool /> },
     { key: "tr", label: "Translate Text", node: <TranslationTool /> },
-    { key: "td", label: "Translate Documents", node: <TranslateDocs /> },
-    { key: "ts", label: "Transciption", node: <Transciption /> },
   ];
 
   // height = depth of 4 rows

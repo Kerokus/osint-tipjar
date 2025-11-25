@@ -73,8 +73,8 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
     const oc = classificationForOutput(report.overall_classification);
     const cc = classificationForOutput(report.collector_classification);
     const dtg = makeDTG(report.date_of_information, report.time);
-    setChatOutput(`(${oc}) ${dtg} (${report.mgrs || ""}) ${report.source_platform || ""} ${report.is_usper ? "(USPER) " : ""}${report.source_name || ""} | (U) ${report.did_what || ""} ${report.report_body || ""} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${report.created_by || ""} | (${cc}) COLLECTOR COMMENT: ${report.source_description || ""} (${oc})`);
-    setReportOutput(`(${oc}) On ${dtg}, ${report.source_platform || ""} ${report.is_usper ? "(USPER) " : ""}${report.source_name || ""}\n${report.did_what || ""} ${report.report_body || ""}\n(${report.mgrs || ""})\n\n(${cc}) COLLECTOR COMMENT: ${report.source_description || ""}`);
+    setChatOutput(`(${oc}) ${dtg} (${report.mgrs || ""}) ${report.source_platform || ""} ${report.is_usper ? "(USPER) " : ""}${report.source_name || ""} | (U) ${report.did_what || ""} ${report.report_body || ""} (MGRS FOR REFERENCE ONLY. PUBLICLY AVAILABLE INFORMATION: SOURCE IS UNVERIFIED) | ${report.created_by || ""} | (${cc}) COLLECTOR COMMENT: ${report.source_description || ""} ${report.additional_comment_text || ""} (${oc})`);
+    setReportOutput(`(${oc}) On ${dtg}, ${report.source_platform || ""} ${report.is_usper ? "(USPER) " : ""}${report.source_name || ""}\n${report.did_what || ""} ${report.report_body || ""}\n(${report.mgrs || ""})\n\n(${cc}) COLLECTOR COMMENT: ${report.source_description || ""} ${report.additional_comment_text || ""}`);
     let citation;
     if (report.did_what === "published") {
       citation = `(${oc}) ${cleanSourceType(report.source_platform)} | ${report.is_usper ? "(USPER) " : ""}${report.source_name || ""} | ${report.article_title || ""} | ${report.article_author || ""} | ${report.uid || ""} | ${dtg} | UNCLASSIFIED | U.S. Person: ${report.is_usper || report.has_uspi ? "YES" : "NO"}`;

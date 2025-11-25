@@ -46,7 +46,7 @@ export default function Sources() {
     setParams((prev) => ({ ...prev, [name]: value }));
   };
 
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitta User"];
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -214,7 +214,7 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   const [modalError, setModalError] = useState("");
   const [isConfirmed, setIsConfirmed] = useState(false);
 
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitta User"];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
