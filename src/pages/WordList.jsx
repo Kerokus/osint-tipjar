@@ -114,9 +114,9 @@ function WordTable({ rows, onDeleteWord }) {
       <table className="min-w-full text-sm">
         <thead className="bg-slate-900 text-slate-200">
           <tr>
-            <Th>Dirty Word</Th>
+            <Th>Buzz Word</Th>
             <Th>Classification</Th>
-            <Th className="text-right">Actions</Th>
+            <Th className="text-right">Delete</Th>
           </tr>
         </thead>
         <tbody className="text-slate-200">
@@ -200,7 +200,7 @@ function AddWordModal({ onClose, onAddSuccess, base, apiKey }) {
           {modalError && <div className="p-3 text-sm text-red-200 bg-red-800/50 border border-red-700 rounded-md">{modalError}</div>}
           
           <div>
-            <label htmlFor="dirty_word" className="block text-sm font-medium text-slate-300 mb-1">Enter new dirty word</label>
+            <label htmlFor="dirty_word" className="block text-sm font-medium text-slate-300 mb-1">Enter new buzz word</label>
             <input
               id="dirty_word"
               name="dirty_word"

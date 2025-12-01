@@ -9,7 +9,7 @@ export default function Admin() {
   const items = [
     { key: "users", label: "View Users", component: <UserList /> },
     { key: "add", label: "Add New User", component: <CreateUser /> },
-    { key: "words", label: "Bad Words", component: <WordList /> },
+    { key: "words", label: "Buzz Words", component: <WordList /> },
   ];
 
   return (

@@ -214,7 +214,7 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   const [modalError, setModalError] = useState("");
   const [isConfirmed, setIsConfirmed] = useState(false);
 
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitta User"];
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -369,7 +369,7 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User"];
+  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
