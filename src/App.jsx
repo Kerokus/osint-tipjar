@@ -158,6 +158,7 @@ function App() {
       </aside>
 
       {/* Mobile sidebar */}
+      {/* Yes, I added a mobile layout too. Fight me. */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />

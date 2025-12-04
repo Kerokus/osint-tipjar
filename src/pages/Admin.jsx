@@ -2,6 +2,7 @@ import { useState } from "react";
 import UserList from "./UserList";
 import WordList from "./WordList";
 import CreateUser from "./CreateUser";
+import Requirements from "./Requirements";
 
 export default function Admin() {
   const [active, setActive] = useState(null);
@@ -10,6 +11,7 @@ export default function Admin() {
     { key: "users", label: "View Users", component: <UserList /> },
     { key: "add", label: "Add New User", component: <CreateUser /> },
     { key: "words", label: "Buzz Words", component: <WordList /> },
+    { key: "requirements", label: "Collection Requirements", component: <Requirements /> }
   ];
 
   return (
