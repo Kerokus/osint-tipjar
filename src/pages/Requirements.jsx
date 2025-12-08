@@ -29,13 +29,26 @@ export default function Requirements() {
           >
             Upload Requirements
           </button>
+          <button
+            onClick={() => setActiveTab("clear")}
+            className={`px-4 h-10 text-sm font-semibold transition-colors ${
+              activeTab === "clear" ? "bg-red-900/20 text-red-400" : "bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-red-300"
+            }`}
+          >
+            Clear All
+          </button>
         </div>
 
         <div className="p-4">
           {activeTab === "view" ? (
             <ViewTab key={refreshTrigger} />
-          ) : (
+          ) : activeTab === "upload" ? (
             <UploadTab onSuccess={() => {
+              setActiveTab("view");
+              refreshView();
+            }} />
+          ) : (
+            <ClearTab onSuccess={() => {
               setActiveTab("view");
               refreshView();
             }} />
@@ -55,7 +68,6 @@ function ViewTab() {
   
   // Modal States
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [editingReq, setEditingReq] = useState(null); // { id, catId } if editing, null otherwise
   const [addingToCategory, setAddingToCategory] = useState(null); // category_id string if adding
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
@@ -355,6 +367,56 @@ function UploadTab({ onSuccess }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// --- NEW: Clear Tab ---
+
+function ClearTab({ onSuccess }) {
+  const [clearing, setClearing] = useState(false);
+  const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
+  const API_KEY = import.meta.env.VITE_API_KEY;
+
+  const handleClearAll = async () => {
+    if (!window.confirm("ARE YOU SURE? This will delete ALL requirements from the database. This action cannot be undone.")) {
+      return;
+    }
+
+    setClearing(true);
+    try {
+      const res = await fetch(`${BASE}/requirements`, {
+        method: "DELETE",
+        headers: { "x-api-key": API_KEY }
+      });
+      
+      if (!res.ok) throw new Error("Failed to clear requirements");
+      
+      alert("All requirements have been successfully deleted.");
+      onSuccess();
+
+    } catch (err) {
+      alert("Error: " + err);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-6">
+      <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-6 max-w-lg text-center">
+        <h3 className="text-xl font-bold text-red-400 mb-2">Danger Zone</h3>
+        <p className="text-slate-300 text-sm mb-6">
+          This action will permanently remove all current requirements. This cannot be undone.
+        </p>
+        <button
+          onClick={handleClearAll}
+          disabled={clearing}
+          className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-8 py-3 rounded-md font-bold shadow-lg shadow-red-900/30 transition-all"
+        >
+          {clearing ? "Clearing Database..." : "Clear All Requirements"}
+        </button>
+      </div>
     </div>
   );
 }
