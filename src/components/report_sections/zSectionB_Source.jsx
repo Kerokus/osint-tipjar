@@ -15,11 +15,8 @@ export default function SectionB_Source({
   uid, setUid,
   articleTitle, setArticleTitle,
   articleAuthor, setArticleAuthor,
-  requirements, setRequirements, // Received from parent
   isUspiLocked, 
 }) {
-  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
-
   useEffect(() => {
     if (usper) setUspi(true);
   }, [usper, setUspi]);
@@ -28,10 +25,6 @@ export default function SectionB_Source({
   const handleUidChange = (e) => {
     const sanitizedValue = e.target.value.replace(/http/gi, "hxxp");
     setUid(sanitizedValue);
-  };
-
-  const handleRemoveRequirement = (reqId) => {
-    setRequirements(prev => prev.filter(r => r !== reqId));
   };
 
   const sourceOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
@@ -45,34 +38,22 @@ export default function SectionB_Source({
     { key: "tr", label: "Translate Text", node: <TranslationTool /> },
   ];
 
-  // height = depth of 4 rows + requirements row
+  // height = depth of 4 rows
   const formRef = useRef(null);
-  const toolH = useRef(280); // Increased default height slightly
+  const toolH = useRef(224);
   useLayoutEffect(() => {
     if (!formRef.current) return;
     const rows = formRef.current.querySelectorAll(".form-row");
     if (!rows.length) return;
     const rowH = rows[0].getBoundingClientRect().height;
-    // Calculate total height based on current rows
-    const totalH = Array.from(rows).reduce((acc, row) => acc + row.getBoundingClientRect().height + 8, 0); // +8 for gap
-    toolH.current = Math.max(160, Math.round(totalH));
+    toolH.current = Math.max(160, Math.round(rowH * 5));
   });
 
   return (
     <section>
-      <AddRequirements 
-        isOpen={isReqModalOpen} 
-        onClose={() => setIsReqModalOpen(false)}
-        onConfirm={(selected) => {
-            setRequirements(selected);
-            setIsReqModalOpen(false);
-        }}
-        initialSelected={requirements}
-      />
-
       <div className="flex gap-4">
         <div className="flex-none max-w-4xl" ref={formRef}>
-          <div className="grid grid-cols-12 gap-x-6 gap-y-2 items-start">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-2 items-center">
             {/* --- Row 1 --- */}
             <div className="col-span-12 form-row grid grid-cols-12 gap-x-6 items-center">
               <div className="col-span-12 md:col-span-1 flex items-center gap-2">
@@ -120,45 +101,10 @@ export default function SectionB_Source({
                 <input value={articleAuthor} onChange={(e) => setArticleAuthor(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700 px-3" />
               </div>
             </div>
-
-            {/* --- Row 4: Requirements --- */}
-            <div className="col-span-12 form-row grid grid-cols-12 gap-x-6 items-start mt-2">
-                <div className="col-span-12 md:col-start-2 md:col-span-9 flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                        <label className="block text-xs">Collection Requirements:</label>
-                        <button 
-                            onClick={() => setIsReqModalOpen(true)}
-                            className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-white rounded border border-slate-500 transition-colors"
-                        >
-                            + Add Requirements
-                        </button>
-                    </div>
-                    
-                    <div className="w-full min-h-[38px] p-2 rounded-md bg-slate-900 border border-slate-700 flex flex-wrap gap-2">
-                        {requirements && requirements.length > 0 ? (
-                            requirements.map(req => (
-                                <span key={req} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-900/40 border border-blue-500/50 text-blue-200 text-xs font-mono">
-                                    {req}
-                                    <button 
-                                        onClick={() => handleRemoveRequirement(req)}
-                                        className="ml-1 text-blue-400 hover:text-red-400 font-bold"
-                                        title="Remove"
-                                    >
-                                        ×
-                                    </button>
-                                </span>
-                            ))
-                        ) : (
-                            <span className="text-slate-500 text-xs italic">No requirements selected.</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
           </div>
         </div>
 
-        {/* RIGHT: Tools section */}
+        {/* RIGHT: Tools section fills remaining width, height = four rows */}
         <div className="flex-1">
           <div className="rounded-md border border-slate-700 bg-slate-900">
             <div className="flex border-b border-slate-700 divide-x divide-slate-700">

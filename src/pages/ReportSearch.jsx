@@ -14,6 +14,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     created_to: "",
     location: "",
     created_by: "",
+    requirement: "", // === NEW: Add requirement field state ===
   });
 
   // State for the executed search query. This triggers the API call.
@@ -66,6 +67,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       created_to: "",
       location: "",
       created_by: "",
+      requirement: "", // === NEW: Reset requirement field ===
     });
     setActiveQuery(null);
     setResults([]);
@@ -88,6 +90,9 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
       const offset = (page - 1) * limit;
       const urlParams = new URLSearchParams();
+      
+      // Iterate over activeQuery to build params. 
+      // This automatically picks up 'requirement' if it exists.
       for (const key in activeQuery) {
         if (activeQuery[key]) {
           urlParams.append(key, activeQuery[key]);
@@ -130,6 +135,10 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       <form onSubmit={handleSearch} onReset={handleReset} className="p-4 bg-slate-800 border border-slate-600 rounded-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Input label="Full-Text Search" name="q" value={params.q} onChange={handleParamChange} placeholder="Search title, body..." />
+          
+          {/* === NEW: Requirement Input Field === */}
+          <Input label="Requirement ID" name="requirement" value={params.requirement} onChange={handleParamChange} placeholder="16692" />
+          
           <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="A0000" />
           <div>
             <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">

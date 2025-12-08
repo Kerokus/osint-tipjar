@@ -21,20 +21,6 @@ function cleanSourceType(t) {
   return t.replace(/\s*User$/i, "").trim();
 }
 
-// === NEW: Helper to safely parse Postgres array strings or JSON arrays ===
-function parseRequirements(reqs) {
-  if (!reqs) return [];
-  if (Array.isArray(reqs)) return reqs;
-  if (typeof reqs === 'string') {
-    // Handle Postgres format {item1,item2}
-    if (reqs.startsWith('{') && reqs.endsWith('}')) {
-      return reqs.slice(1, -1).split(',').filter(Boolean);
-    }
-    return [reqs];
-  }
-  return [];
-}
-
 
 export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit }) {
   const [report, setReport] = useState(null);
@@ -138,9 +124,6 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
 
   const copy = async (text) => navigator.clipboard.writeText(text ?? "");
 
-  // === NEW: Parse requirements for display ===
-  const requirementList = report ? parseRequirements(report.requirements) : [];
-
   return (
     <div 
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
@@ -169,20 +152,6 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
               </div>
               <ImagePane imageUrl={report.image_url} />
             </div>
-
-            {/* === NEW: Requirements Display Section === */}
-            {requirementList.length > 0 && (
-                <div className="pt-2 border-t border-slate-700">
-                    <label className="block text-xs font-semibold text-slate-400 mb-2">Collection Requirements</label>
-                    <div className="flex flex-wrap gap-2">
-                        {requirementList.map((req, i) => (
-                            <span key={i} className="px-2 py-1 rounded bg-blue-900/40 border border-blue-500/30 text-blue-200 text-xs font-mono">
-                                {req}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             <div className="space-y-4 pt-4 border-t border-slate-700">
               <Output text={chatOutput} onCopy={copy} label="Chat Output" />

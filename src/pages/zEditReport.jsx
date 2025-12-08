@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
-// === NEW: Import the classification function & Requirements Modal ===
+// === NEW: Import the classification function ===
 import { classifyImage } from "../components/supportFunctions";
-import AddRequirements from "../components/AddRequirements";
 
 // Basic sanitizer for building filenames
 function slugify(s) {
@@ -26,28 +25,9 @@ function makeDTG(dateStr, timeStr) {
   return `${DD}${HH}${MM}Z${MMM}${YY}`;
 }
 
-// === NEW: Helper to safely parse Postgres array strings or JSON arrays ===
-function parseRequirements(reqs) {
-  if (!reqs) return [];
-  if (Array.isArray(reqs)) return reqs;
-  if (typeof reqs === 'string') {
-    if (reqs.startsWith('{') && reqs.endsWith('}')) {
-      return reqs.slice(1, -1).split(',').filter(Boolean);
-    }
-    return [reqs];
-  }
-  return [];
-}
-
-
 export default function EditReport({ report, onClose, onSaveSuccess }) {
   
-  // === MODIFIED: Initialize requirements array in state ===
-  const [formData, setFormData] = useState({ 
-    ...report,
-    requirements: parseRequirements(report.requirements) 
-  });
-  
+  const [formData, setFormData] = useState({ ...report });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   
@@ -60,9 +40,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
   const [newImagePreviewUrl, setNewImagePreviewUrl] = useState(null);
   const [imageClass, setImageClass] = useState("U");
   const [imageHasBeenClassified, setImageHasBeenClassified] = useState(false);
-
-  // === NEW: State for Requirements Modal ===
-  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
 
   // State for the dropdowns
   const [macoms, setMacoms] = useState([]);
@@ -170,18 +147,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
         if (name === 'macom') { newState.country = ""; }
         return newState;
     });
-  };
-
-  // === NEW: Requirements handlers ===
-  const handleReqsConfirm = (selected) => {
-      setFormData(prev => ({ ...prev, requirements: selected }));
-      setIsReqModalOpen(false);
-  };
-  const handleRemoveReq = (reqId) => {
-      setFormData(prev => ({ 
-          ...prev, 
-          requirements: prev.requirements.filter(r => r !== reqId) 
-      }));
   };
 
   // === NEW: Handler for when a new image file is chosen ===
@@ -292,14 +257,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      {/* === NEW: Add Requirements Modal === */}
-      <AddRequirements 
-        isOpen={isReqModalOpen}
-        onClose={() => setIsReqModalOpen(false)}
-        onConfirm={handleReqsConfirm}
-        initialSelected={formData.requirements || []}
-      />
-
       <form
         onSubmit={handleSubmit}
         className="bg-slate-800 border border-slate-600 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
@@ -339,38 +296,6 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
               <div className="flex items-center gap-4">
                 <Checkbox label="USPER" name="is_usper" checked={!!formData.is_usper} onChange={handleInputChange} />
                 <Checkbox label="USPI" name="has_uspi" checked={!!formData.has_uspi} onChange={handleInputChange} />
-              </div>
-
-              {/* === NEW: Requirements Editor === */}
-              <div>
-                  <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-medium text-slate-300">Collection Requirements</label>
-                      <button 
-                          type="button"
-                          onClick={() => setIsReqModalOpen(true)}
-                          className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
-                      >
-                          Edit
-                      </button>
-                  </div>
-                  <div className="w-full min-h-[40px] rounded-md bg-slate-900 border border-slate-700 p-2 flex flex-wrap gap-2">
-                      {formData.requirements && formData.requirements.length > 0 ? (
-                          formData.requirements.map(req => (
-                              <span key={req} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-900/40 border border-blue-500/50 text-blue-200 text-xs font-mono">
-                                  {req}
-                                  <button 
-                                      type="button"
-                                      onClick={() => handleRemoveReq(req)}
-                                      className="ml-1 text-blue-400 hover:text-red-400 font-bold"
-                                  >
-                                      ×
-                                  </button>
-                              </span>
-                          ))
-                      ) : (
-                          <span className="text-slate-500 text-xs italic">No requirements selected.</span>
-                      )}
-                  </div>
               </div>
               
               <div>

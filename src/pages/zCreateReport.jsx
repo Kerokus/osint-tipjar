@@ -93,9 +93,6 @@ export default function CreateReport() {
   const [uid, setUid] = useState("");
   const [articleTitle, setArticleTitle] = useState("N/A");
   const [articleAuthor, setArticleAuthor] = useState("N/A");
-  
-  // NEW: Requirements State
-  const [requirements, setRequirements] = useState([]);
 
   // State for auto-populating source info
   const [existingSourceId, setExistingSourceId] = useState(null);
@@ -485,7 +482,6 @@ const handleSourceSelect = (source) => {
     setUid("");
     setArticleTitle("N/A");
     setArticleAuthor("N/A");
-    setRequirements([]); // RESET REQUIREMENTS
     setReportBody("");
     setCollectorClass("U");
     setSourceDescription("");
@@ -731,7 +727,6 @@ const handleSourceSelect = (source) => {
         uid,
         article_title: articleTitle,
         article_author: articleAuthor,
-        requirements: requirements, // ADDED REQUIREMENTS TO PAYLOAD
         report_body: reportBody,
         collector_classification: collectorClass,
         source_description: sourceDescription,
@@ -928,8 +923,6 @@ const handleSourceSelect = (source) => {
         setArticleTitle={setArticleTitle}
         articleAuthor={articleAuthor}
         setArticleAuthor={setArticleAuthor}
-        requirements={requirements}
-        setRequirements={setRequirements}
       />
       <hr className="my-6 w-full border-sky-300" />
 
