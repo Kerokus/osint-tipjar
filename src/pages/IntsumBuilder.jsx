@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+// 1. IMPORT THE HELPER
+import { generateDocx } from "../components/documentBuilder"; 
 
 export default function IntsumBuilder() {
   // --- State ---
@@ -15,43 +17,24 @@ export default function IntsumBuilder() {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryErr, setSummaryErr] = useState(null);
 
+  // 2. NEW STATE FOR CAPTIONS (Key: reportId, Value: string)
+  const [captions, setCaptions] = useState({});
+
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
+  const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
 
   // --- Configuration: Category Definitions ---
   const CATEGORY_DEFINITIONS = {
-    "Israel-Hamas Ceasefire": [
-        "ISRAEL", "GAZA", "GAZA STRIP", "WEST BANK", "PALESTINE", "PALESTINIAN TERRITORY", 
-        "ISR", "PSE", "XGZ", "XWB"
-    ],
-    "Levant": [
-        "LEBANON", "SYRIA", "JORDAN", "TURKEY", "CYPRUS",
-        "LBN", "SYR", "JOR", "TUR", "CYP"
-    ],
-    "Iranian Threat Network": [
-        "IRAN", "IRN"
-    ],
-    "Iraq": [
-        "IRAQ", "IRQ"
-    ],
-    "Arabian Peninsula": [
-        "YEMEN", "SAUDI ARABIA", "QATAR", "UAE", "KUWAIT", "OMAN", "BAHRAIN", "UNITED ARAB EMIRATES",
-        "YEM", "SAU", "QAT", "ARE", "KWT", "OMN", "BHR"
-    ],
-    "Pakistan": [
-        "PAKISTAN", "PAK"
-    ]
+    "Israel-Hamas Ceasefire": ["ISRAEL", "GAZA", "GAZA STRIP", "WEST BANK", "PALESTINE", "PALESTINIAN TERRITORY", "ISR", "PSE", "XGZ", "XWB"],
+    "Levant": ["LEBANON", "SYRIA", "JORDAN", "TURKEY", "CYPRUS", "LBN", "SYR", "JOR", "TUR", "CYP"],
+    "Iranian Threat Network": ["IRAN", "IRN"],
+    "Iraq": ["IRAQ", "IRQ"],
+    "Arabian Peninsula": ["YEMEN", "SAUDI ARABIA", "QATAR", "UAE", "KUWAIT", "OMAN", "BAHRAIN", "UNITED ARAB EMIRATES", "YEM", "SAU", "QAT", "ARE", "KWT", "OMN", "BHR"],
+    "Pakistan": ["PAKISTAN", "PAK"]
   };
 
-  const SECTION_ORDER = [
-    "Israel-Hamas Ceasefire",
-    "Levant",
-    "Iranian Threat Network",
-    "Iraq",
-    "Arabian Peninsula",
-    "Pakistan",
-    "Additional Reporting"
-  ];
+  const SECTION_ORDER = ["Israel-Hamas Ceasefire", "Levant", "Iranian Threat Network", "Iraq", "Arabian Peninsula", "Pakistan", "Additional Reporting"];
 
   // --- Helper: Categorize Report ---
   const getCategory = (r) => {
@@ -86,6 +69,7 @@ export default function IntsumBuilder() {
     setErr(null);
     setReports([]);
     setSummary(""); 
+    setCaptions({}); // Reset captions on new fetch
     setGeneratedRangeLabel(label);
 
     try {
@@ -142,6 +126,22 @@ export default function IntsumBuilder() {
     } finally {
       setGeneratingSummary(false);
     }
+  };
+
+  // --- 3. DOWNLOAD HANDLER ---
+  const handleDownloadDocx = () => {
+    generateDocx({
+      reports,
+      displayList,
+      summary,
+      rangeLabel: generatedRangeLabel,
+      uniqueRequirements,
+      hasUsper,
+      captions, // Pass the captured captions state
+      reportCitationMap,
+      apiKey: API_KEY,
+      imageApiKey: IMG_API_KEY
+    });
   };
 
   // --- Standard Ranges ---
@@ -204,6 +204,11 @@ export default function IntsumBuilder() {
 
   const hasUsper = useMemo(() => reports.some(r => r.is_usper || r.has_uspi), [reports]);
 
+  // --- 4. Caption Update Helper ---
+  const updateCaption = (id, text) => {
+    setCaptions(prev => ({ ...prev, [id]: text }));
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       
@@ -211,18 +216,30 @@ export default function IntsumBuilder() {
       <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 space-y-4">
         <div className="flex justify-between items-start">
             <h2 className="text-lg font-bold text-slate-100">INTSUM Builder</h2>
-            <div className="flex flex-col items-end">
-                <button
-                    onClick={handleGenerateSummary}
-                    disabled={reports.length === 0 || generatingSummary || loading}
-                    className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                    {generatingSummary ? "Generating..." : "Generate Summary"}
-                </button>
+            <div className="flex flex-col items-end gap-2">
+                <div className="flex gap-2">
+                    {/* 5. ADD DOWNLOAD BUTTON */}
+                    <button
+                        onClick={handleDownloadDocx}
+                        disabled={reports.length === 0}
+                        className="px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        Download .docx
+                    </button>
+
+                    <button
+                        onClick={handleGenerateSummary}
+                        disabled={reports.length === 0 || generatingSummary || loading}
+                        className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {generatingSummary ? "Generating..." : "Generate Summary"}
+                    </button>
+                </div>
                 {summaryErr && <span className="text-xs text-red-400 mt-1">{summaryErr}</span>}
             </div>
         </div>
         
+        {/* ... Rest of controls (Date Pickers) ... */}
         <div className="flex flex-wrap gap-4 items-end">
           <button onClick={fetchLast24} disabled={loading} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-medium disabled:opacity-50">
             Last 24 hours (1600Z - 1600Z)
@@ -282,10 +299,19 @@ export default function IntsumBuilder() {
                   return <div key={`nstr-${i}`} className="text-sm pl-0 mb-4">NSTR</div>;
               }
 
-              // Report Item with Image and Caption Logic
               const r = item.data;
               const citationId = reportCitationMap.get(r.id);
-              return <ReportItem key={r.id || i} r={r} citationId={citationId} parseDtgFromTitle={parseDtgFromTitle} />;
+              // 6. PASS CAPTION STATE DOWN
+              return (
+                  <ReportItem 
+                      key={r.id || i} 
+                      r={r} 
+                      citationId={citationId} 
+                      parseDtgFromTitle={parseDtgFromTitle} 
+                      caption={captions[r.id] || ""} 
+                      onCaptionChange={(txt) => updateCaption(r.id, txt)}
+                  />
+              );
             })}
           </div>
 
@@ -308,10 +334,9 @@ export default function IntsumBuilder() {
   );
 }
 
-// --- Sub-Component: Report Item with Image Handling ---
-function ReportItem({ r, citationId, parseDtgFromTitle }) {
+// --- Modified Report Item ---
+function ReportItem({ r, citationId, parseDtgFromTitle, caption, onCaptionChange }) {
     const [imgUrl, setImgUrl] = useState(null);
-    const [caption, setCaption] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     
     const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
@@ -325,7 +350,6 @@ function ReportItem({ r, citationId, parseDtgFromTitle }) {
         let cancel = false;
         const fetchImage = async () => {
             try {
-                // Fetch using API Key header if required
                 const res = await fetch(r.image_url, { 
                     headers: { "x-api-key": IMG_API_KEY } 
                 });
@@ -350,7 +374,6 @@ function ReportItem({ r, citationId, parseDtgFromTitle }) {
 
     return (
         <div className="text-justify leading-relaxed mb-4 break-inside-avoid">
-            {/* Body */}
             <div className="mb-1">
                 <span className="font-bold">{classif} On {dtgStr}, {cleanSourceType(r.source_platform)} {r.is_usper ? "(USPER)" : ""} {r.source_name} </span>
                 <p><span>{r.did_what} {r.report_body}</span>
@@ -358,13 +381,11 @@ function ReportItem({ r, citationId, parseDtgFromTitle }) {
                 <div className="mt-1">({r.mgrs})</div></p>
             </div>
 
-            {/* Collector Comment with spacing */}
             <div className="mt-4">
                 <span className="font-bold">{collectorClassif} COLLECTOR COMMENT: </span>
                 {r.source_description} {r.additional_comment_text}
             </div>
 
-            {/* Image Section */}
             {imgUrl && (
                 <div className="mt-4 flex flex-col items-center">
                     <img 
@@ -377,8 +398,8 @@ function ReportItem({ r, citationId, parseDtgFromTitle }) {
                             <input 
                                 autoFocus
                                 className="text-[8pt] text-center border-b border-gray-400 outline-none w-64 bg-transparent"
-                                value={caption}
-                                onChange={(e) => setCaption(e.target.value)}
+                                value={caption} // Uses Prop from Parent
+                                onChange={(e) => onCaptionChange(e.target.value)} // Calls parent updater
                                 onBlur={() => setIsEditing(false)}
                                 onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
                             />
@@ -397,7 +418,7 @@ function ReportItem({ r, citationId, parseDtgFromTitle }) {
     );
 }
 
-// --- Formatting Helpers ---
+// ... Keep existing Formatting Helpers at the bottom ...
 function classificationForOutput(val) {
     if (val === "U") return "U";
     if (val === "CUI") return "CUI";
