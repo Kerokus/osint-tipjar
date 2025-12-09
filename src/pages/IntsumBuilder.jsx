@@ -155,6 +155,12 @@ export default function IntsumBuilder() {
     handleFetch(start, end, `Last 24 Hours (${fmtDateTime(start)} - ${fmtDateTime(end)})`);
   };
 
+  const fetchLast12 = () => {
+    const end = new Date(); // Current time (Now)
+    const start = new Date(end.getTime() - (12 * 60 * 60 * 1000)); // Now minus 12 hours (in ms)
+    handleFetch(start, end, `Last 12 Hours (${fmtDateTime(start)} - ${fmtDateTime(end)})`);
+  };
+
   const fetchCustom = () => {
     if (!customStart || !customEnd) return;
     handleFetch(new Date(customStart), new Date(customEnd), "Custom Range");
@@ -243,6 +249,9 @@ export default function IntsumBuilder() {
         <div className="flex flex-wrap gap-4 items-end">
           <button onClick={fetchLast24} disabled={loading} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-medium disabled:opacity-50">
             Last 24 hours (1600Z - 1600Z)
+          </button>
+          <button onClick={fetchLast12} disabled={loading} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-medium disabled:opacity-50 ml-2">
+            Last 12 Hours
           </button>
           <div className="h-8 w-px bg-slate-600 mx-2 hidden sm:block"></div>
           <button onClick={() => setUseCustomRange(!useCustomRange)} className="text-sm text-blue-400 underline self-center">
