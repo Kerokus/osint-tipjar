@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 export default function IntsumBuilder() {
   // --- State ---
@@ -19,7 +19,6 @@ export default function IntsumBuilder() {
   const API_KEY = import.meta.env.VITE_API_KEY;
 
   // --- Configuration: Category Definitions ---
-  // We match these against the report.country field (converted to Uppercase)
   const CATEGORY_DEFINITIONS = {
     "Israel-Hamas Ceasefire": [
         "ISRAEL", "GAZA", "GAZA STRIP", "WEST BANK", "PALESTINE", "PALESTINIAN TERRITORY", 
@@ -57,16 +56,10 @@ export default function IntsumBuilder() {
   // --- Helper: Categorize Report ---
   const getCategory = (r) => {
     const country = (r.country || "").toUpperCase().trim();
-    
-    // Check our definitions
     for (const [section, keywords] of Object.entries(CATEGORY_DEFINITIONS)) {
         if (keywords.includes(country)) return section;
-        
-        // Optional: Check if the country string *contains* a keyword (e.g. "SOUTH LEBANON")
         if (keywords.some(k => country.includes(k))) return section;
     }
-
-    // Default
     return "Additional Reporting";
   };
 
@@ -107,14 +100,12 @@ export default function IntsumBuilder() {
       const data = await res.json();
       const rawRows = data.results || [];
 
-      // Prune by strict time
       const validReports = rawRows.filter(r => {
         const dtgDate = parseDtgFromTitle(r.title);
         if (!dtgDate) return false;
         return dtgDate >= startObj && dtgDate <= endObj;
       });
 
-      // Sort Chronologically first (so they are ordered within their categories later)
       validReports.sort((a, b) => {
         const da = parseDtgFromTitle(a.title);
         const db = parseDtgFromTitle(b.title);
@@ -172,33 +163,23 @@ export default function IntsumBuilder() {
   // --- Sorting & Categorization Logic ---
   const displayList = useMemo(() => {
     if (reports.length === 0) return [];
-
-    // Initialize groupings
     const groups = {};
     SECTION_ORDER.forEach(sec => groups[sec] = []);
-    
-    // Distribute reports into buckets
     reports.forEach(r => {
         const cat = getCategory(r);
-        if (groups[cat]) {
-            groups[cat].push(r);
-        } else {
-            groups["Additional Reporting"].push(r);
-        }
+        if (groups[cat]) groups[cat].push(r);
+        else groups["Additional Reporting"].push(r);
     });
 
-    // Flatten into a render-ready list with Headers
     const flatList = [];
     SECTION_ORDER.forEach(sec => {
-        if (groups[sec].length > 0) {
-            flatList.push({ type: "HEADER", title: sec });
-            groups[sec].forEach(r => flatList.push({ type: "REPORT", data: r }));
-        }
+        flatList.push({ type: "HEADER", title: sec });
+        if (groups[sec].length > 0) groups[sec].forEach(r => flatList.push({ type: "REPORT", data: r }));
+        else flatList.push({ type: "NSTR" });
     });
     return flatList;
   }, [reports]);
 
-  // Create Map for Citation IDs based on the FINAL display order
   const reportCitationMap = useMemo(() => {
       const map = new Map();
       let counter = 1;
@@ -297,26 +278,14 @@ export default function IntsumBuilder() {
               if (item.type === "HEADER") {
                   return <div key={`h-${i}`} className="pt-2"><h3 className="text-center font-bold underline uppercase text-sm">{item.title}</h3></div>;
               }
+              if (item.type === "NSTR") {
+                  return <div key={`nstr-${i}`} className="text-sm pl-0 mb-4">NSTR</div>;
+              }
+
+              // Report Item with Image and Caption Logic
               const r = item.data;
               const citationId = reportCitationMap.get(r.id);
-              const dtg = parseDtgFromTitle(r.title);
-              const dtgStr = dtg ? makeDTGString(dtg) : "UNKNOWN";
-              const classif = `(${classificationForOutput(r.overall_classification)})`;
-              const collectorClassif = `(${classificationForOutput(r.collector_classification)})`;
-
-              return (
-                <div key={r.id || i} className="text-justify leading-relaxed mb-4">
-                    <p>
-                        <span className="font-bold">{classif} On {dtgStr}, {cleanSourceType(r.source_platform)} {r.is_usper ? "(USPER)" : ""} {r.source_name} </span>
-                        <p>{r.did_what} {r.report_body}
-                        <sup className="font-bold text-xs ml-0.5">[{citationId}]</sup></p>
-                    </p>
-                    <p>
-                        <span className="font-bold">{collectorClassif} COLLECTOR COMMENT: </span>
-                        {r.source_description} {r.additional_comment_text}
-                    </p>
-                </div>
-              );
+              return <ReportItem key={r.id || i} r={r} citationId={citationId} parseDtgFromTitle={parseDtgFromTitle} />;
             })}
           </div>
 
@@ -339,6 +308,96 @@ export default function IntsumBuilder() {
   );
 }
 
+// --- Sub-Component: Report Item with Image Handling ---
+function ReportItem({ r, citationId, parseDtgFromTitle }) {
+    const [imgUrl, setImgUrl] = useState(null);
+    const [caption, setCaption] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    
+    const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
+
+    useEffect(() => {
+        if (!r.image_url) {
+            setImgUrl(null);
+            return;
+        }
+
+        let cancel = false;
+        const fetchImage = async () => {
+            try {
+                // Fetch using API Key header if required
+                const res = await fetch(r.image_url, { 
+                    headers: { "x-api-key": IMG_API_KEY } 
+                });
+                if (!res.ok) throw new Error("Image fetch failed");
+                const blob = await res.blob();
+                if (!cancel) setImgUrl(URL.createObjectURL(blob));
+            } catch (err) {
+                console.error("Failed to load image for report", r.id, err);
+            }
+        };
+        fetchImage();
+        return () => { 
+            cancel = true; 
+            if (imgUrl) URL.revokeObjectURL(imgUrl);
+        };
+    }, [r.image_url, IMG_API_KEY]);
+
+    const dtg = parseDtgFromTitle(r.title);
+    const dtgStr = dtg ? makeDTGString(dtg) : "UNKNOWN";
+    const classif = `(${classificationForOutput(r.overall_classification)})`;
+    const collectorClassif = `(${classificationForOutput(r.collector_classification)})`;
+
+    return (
+        <div className="text-justify leading-relaxed mb-4 break-inside-avoid">
+            {/* Body */}
+            <div className="mb-1">
+                <span className="font-bold">{classif} On {dtgStr}, {cleanSourceType(r.source_platform)} {r.is_usper ? "(USPER)" : ""} {r.source_name} </span>
+                <p><span>{r.did_what} {r.report_body}</span>
+                <sup className="font-bold text-xs ml-0.5">[{citationId}]</sup>
+                <div className="mt-1">({r.mgrs})</div></p>
+            </div>
+
+            {/* Collector Comment with spacing */}
+            <div className="mt-4">
+                <span className="font-bold">{collectorClassif} COLLECTOR COMMENT: </span>
+                {r.source_description} {r.additional_comment_text}
+            </div>
+
+            {/* Image Section */}
+            {imgUrl && (
+                <div className="mt-4 flex flex-col items-center">
+                    <img 
+                        src={imgUrl} 
+                        alt="Report attachment" 
+                        className="max-w-[80%] max-h-[350px] object-contain border border-gray-200 shadow-sm" 
+                    />
+                    <div className="mt-1 text-center">
+                        {isEditing ? (
+                            <input 
+                                autoFocus
+                                className="text-[8pt] text-center border-b border-gray-400 outline-none w-64 bg-transparent"
+                                value={caption}
+                                onChange={(e) => setCaption(e.target.value)}
+                                onBlur={() => setIsEditing(false)}
+                                onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
+                            />
+                        ) : (
+                            <div 
+                                onClick={() => setIsEditing(true)} 
+                                className={`text-[8pt] cursor-pointer select-none ${caption ? "text-black font-bold uppercase" : "text-gray-400 italic"}`}
+                            >
+                                {caption || "Click to add caption"}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// --- Formatting Helpers ---
 function classificationForOutput(val) {
     if (val === "U") return "U";
     if (val === "CUI") return "CUI";
