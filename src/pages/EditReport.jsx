@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import SectionHeader from "../components/report_sections/SectionHeader";
-// === NEW: Import the classification function & Requirements Modal ===
 import { classifyImage } from "../components/supportFunctions";
 import AddRequirements from "../components/AddRequirements";
 
@@ -26,7 +25,8 @@ function makeDTG(dateStr, timeStr) {
   return `${DD}${HH}${MM}Z${MMM}${YY}`;
 }
 
-// === NEW: Helper to safely parse Postgres array strings or JSON arrays ===
+// Collection requirements are stored as an array in postgreSQL
+// This function will parse them
 function parseRequirements(reqs) {
   if (!reqs) return [];
   if (Array.isArray(reqs)) return reqs;
@@ -42,7 +42,7 @@ function parseRequirements(reqs) {
 
 export default function EditReport({ report, onClose, onSaveSuccess }) {
   
-  // === MODIFIED: Initialize requirements array in state ===
+  // Initialize requirements array in state 
   const [formData, setFormData] = useState({ 
     ...report,
     requirements: parseRequirements(report.requirements) 
@@ -54,14 +54,14 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
   // State for existing image
   const [imageBlobUrl, setImageBlobUrl] = useState(null);
 
-  // === NEW: State for new image classification ===
+  // State for new image classification 
   const [newImageFile, setNewImageFile] = useState(null);
   const [originalNewImageFile, setOriginalNewImageFile] = useState(null);
   const [newImagePreviewUrl, setNewImagePreviewUrl] = useState(null);
   const [imageClass, setImageClass] = useState("U");
   const [imageHasBeenClassified, setImageHasBeenClassified] = useState(false);
 
-  // === NEW: State for Requirements Modal ===
+  // State for Requirements Modal
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
 
   // State for the dropdowns
@@ -145,7 +145,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     }
   }, [formData.date_of_information, formData.time, formData.country, formData.location, formData.created_by, formData.title]);
 
-  // === MODIFIED: Update overall classification based on collector AND new image class ===
+  // Update overall classification based on collector AND new image class
   useEffect(() => {
     const currentOverall = formData.overall_classification;
     const collectorClass = formData.collector_classification;
@@ -172,7 +172,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     });
   };
 
-  // === NEW: Requirements handlers ===
+  // Requirements handlers
   const handleReqsConfirm = (selected) => {
       setFormData(prev => ({ ...prev, requirements: selected }));
       setIsReqModalOpen(false);
@@ -184,7 +184,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
       }));
   };
 
-  // === NEW: Handler for when a new image file is chosen ===
+  // Handler for when a new image file is chosen
   const handleSetNewImageFile = (file) => {
     if (!file) return;
     setNewImageFile(file);
@@ -193,7 +193,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     setImageHasBeenClassified(false);
   };
 
-  // === NEW: Handler to classify the newly uploaded image ===
+  // Handler to classify the newly uploaded image 
   const handleClassifyImage = async (classification) => {
     if (!originalNewImageFile) return;
     try {
@@ -229,7 +229,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
     setIsSaving(true);
     setError("");
 
-    // === NEW: Validation check for new images ===
+    // Validation check for new images
     if (newImageFile && !imageHasBeenClassified) {
       setError("Please classify the new image before saving.");
       setIsSaving(false);
@@ -292,7 +292,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      {/* === NEW: Add Requirements Modal === */}
+      {/* === Add Requirements Modal === */}
       <AddRequirements 
         isOpen={isReqModalOpen}
         onClose={() => setIsReqModalOpen(false)}
@@ -341,7 +341,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
                 <Checkbox label="USPI" name="has_uspi" checked={!!formData.has_uspi} onChange={handleInputChange} />
               </div>
 
-              {/* === NEW: Requirements Editor === */}
+              {/* === Requirements Editor === */}
               <div>
                   <div className="flex justify-between items-center mb-1">
                       <label className="block text-xs font-medium text-slate-300">Collection Requirements</label>
@@ -375,7 +375,7 @@ export default function EditReport({ report, onClose, onSaveSuccess }) {
               
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Image</label>
-                {/* === MODIFIED: Logic to show existing image, new image preview, or upload input === */}
+                {/* === Show existing image, new image preview, or upload input === */}
                 {formData.image_url && imageBlobUrl ? (
                   <div className="space-y-2">
                     <div className="w-full h-48 bg-slate-900 rounded-md border border-slate-600 flex items-center justify-center overflow-hidden">
