@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 
-export default function ReportSearch({ onViewReport, onSendToIntsum }) {
+export default function ReportSearch({ onViewReport }) {
   
   // === NEW: Toggle State ===
   const [searchMode, setSearchMode] = useState("ai"); // "params" | "ai"
@@ -237,18 +237,6 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
                 <button type="reset" className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200">
                     Reset
                 </button>
-                
-                {/* 2. New Button: Send to Intsum */}
-                {results.length > 0 && (
-                    <button 
-                        type="button" 
-                        onClick={() => onSendToIntsum(results)}
-                        className="px-4 py-2 text-sm bg-green-700 hover:bg-green-600 rounded-md text-white font-semibold transition-colors flex items-center gap-2"
-                        title="Send these search results to the INTSUM Builder"
-                    >
-                        <span>📝</span> Send to INTSUM
-                    </button>
-                )}
             </div>
         </form>
       </div>

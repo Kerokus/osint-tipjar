@@ -15,9 +15,6 @@ function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // 1. NEW STATE: Holds reports sent from Search to Intsum
-  const [importedReports, setImportedReports] = useState(null);
-
   useEffect(() => {
     const sync = () => {
       const authedNow = !!localStorage.getItem("token");
@@ -37,16 +34,11 @@ function App() {
     };
   }, [activeTab]);
 
-  // 2. NEW HANDLER: Switches tab and sets the data
-  const handleSendToIntsum = (reports) => {
-    setImportedReports(reports);
-    setActiveTab("intsum");
-  };
-
   if (!authed) {
     return <Login onSuccess={() => window.dispatchEvent(new Event("auth-changed"))} />;
   }
 
+  //These are the tabs inside the sidebar.
   const tabs = [
     { key: "newReport", label: "Create Report" },
     { key: "sources", label: "Sources" },
@@ -104,6 +96,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-800 text-slate-200 flex">
+      {/* Sidebar for md+ */}
       <aside
         className={`hidden md:flex md:flex-col bg-slate-900 border-r border-slate-700 transition-[width] duration-200 ease-in-out overflow-hidden
           ${collapsed ? "w-16" : "w-64"}
@@ -112,6 +105,7 @@ function App() {
         <div className="h-40 flex flex-col justify-center border-b border-slate-700">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center w-full">
+              {/* 2. The logo image is larger */}
               <img
                 src={tipjarLogo}
                 alt="TIPJar"
@@ -132,10 +126,12 @@ function App() {
           </div>
         </div>
 
+        {/* Navigation sits below the taller logo area */}
         <div className={`overflow-y-auto ${collapsed ? "px-1 py-2" : "px-2 py-2"}`}>
           <SidebarNav />
         </div>
 
+        {/* 3. This spacer div pushes everything below it to the bottom */}
         <div className="flex-1" />
 
         <div className="mt-auto px-2 py-3 border-t border-slate-700">
@@ -161,6 +157,8 @@ function App() {
         </div>
       </aside>
 
+      {/* Mobile sidebar */}
+      {/* Yes, I added a mobile layout too. Fight me. */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
@@ -202,6 +200,7 @@ function App() {
         </div>
       )}
 
+      {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-12 flex items-center justify-between px-3 border-b border-slate-700 bg-slate-900 md:bg-transparent md:border-b-0">
           <div className="flex items-center gap-2">
@@ -220,13 +219,8 @@ function App() {
         <main className="flex-1 p-4 overflow-auto">
           {activeTab === "newReport" && <CreateReport />}
           {activeTab === "sources" && <Sources />}
-          
-          {/* 3. Pass handler to ViewAndSearch */}
-          {activeTab === "search" && <ViewAndSearch onSendToIntsum={handleSendToIntsum} />}
-          
-          {/* 4. Pass imported data to IntsumBuilder */}
-          {activeTab === "intsum" && <IntsumBuilder initialReports={importedReports} />}
-          
+          {activeTab === "search" && <ViewAndSearch />}
+          {activeTab === "intsum" && <IntsumBuilder />}
           {activeTab === "settings" && <Settings />}
           {isAdmin && activeTab === "admin" && <Admin />}
         </main>
