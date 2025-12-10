@@ -62,8 +62,9 @@ export default function CreateReport() {
   };
 
   // Overall classification state
+  // Order of precedence: U < CUI < CUI//REL TO USA, FVEY
   const [overallClass, setOverallClass] = useState("U");
-  const rank = { U: 0, CUI: 1, CUIREL: 2 }; // U < CUI < CUI//REL TO USA, FVEY
+  const rank = { U: 0, CUI: 1, CUIREL: 2 }; 
   const maxClass = (...vals) => vals.reduce((a, b) => (rank[b] > rank[a] ? b : a), "U");
 
   // State for Section A
@@ -81,7 +82,6 @@ export default function CreateReport() {
   const [imgFile, setImgFile] = useState(null);
   const [originalImgFile, setOriginalImgFile] = useState(null); 
   const [imageClass, setImageClass] = useState("U");
-  // === NEW: State to track if the user has classified the image ===
   const [imageHasBeenClassified, setImageHasBeenClassified] = useState(false);
 
   // State for Section B
@@ -94,7 +94,7 @@ export default function CreateReport() {
   const [articleTitle, setArticleTitle] = useState("N/A");
   const [articleAuthor, setArticleAuthor] = useState("N/A");
   
-  // NEW: Requirements State
+  // Collection Requirements State
   const [requirements, setRequirements] = useState([]);
 
   // State for auto-populating source info

@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import MgrsTool from "../../components/MgrsTool.jsx";
 import TimeZoneTool from "../../components/TimeZoneTool.jsx";
 import TranslationTool from "../../components/TranslationTool.jsx";
+import OcrTool from "../../components/OcrTool.jsx";
 import AddRequirements from "../../components/AddRequirements.jsx";
 
 
@@ -43,6 +44,7 @@ export default function SectionB_Source({
     { key: "mgrs", label: "MGRS Conversion", node: <MgrsTool /> },
     { key: "dt", label: "Timezone Conversions", node: <TimeZoneTool /> },
     { key: "tr", label: "Translate Text", node: <TranslationTool /> },
+    { key: "ocr", label: "Extract Image Text", node: <OcrTool /> },
   ];
 
   // height = depth of 4 rows + requirements row
