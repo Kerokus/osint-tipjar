@@ -1,9 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
 
-
-export default function ReportSearch({ onViewReport }) { // 1. Accept the onViewReport prop
+export default function ReportSearch({ onViewReport }) {
   
-  // State for search form inputs
+  // === NEW: Toggle State ===
+  const [searchMode, setSearchMode] = useState("params"); // "params" | "ai"
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [interpretedQuery, setInterpretedQuery] = useState(null); // To show the SQL the AI wrote
+
+  // State for standard search form inputs
   const [params, setParams] = useState({
     q: "",
     country: "",
@@ -14,10 +18,11 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
     created_to: "",
     location: "",
     created_by: "",
-    requirement: "", // === NEW: Add requirement field state ===
+    requirement: "",
   });
 
-  // State for the executed search query. This triggers the API call.
+  // State for the executed search query. 
+  // We now store the mode inside the active query to know which API to hit.
   const [activeQuery, setActiveQuery] = useState(null);
 
   // State for API results and loading status
@@ -27,7 +32,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
   // State for pagination
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
+  const [limit] = useState(25);
   const [total, setTotal] = useState(0); 
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
@@ -37,13 +42,8 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
   const handleParamChange = (e) => {
     const { name, value } = e.target;
-    
-    // Check if the input is the 'country' field
     const uppercaseFields = ['country', 'macom', 'created_by']
-    const finalValue = uppercaseFields.includes(name) 
-      ? value.toUpperCase() 
-      : value;
-
+    const finalValue = uppercaseFields.includes(name) ? value.toUpperCase() : value;
     setParams((prev) => ({ ...prev, [name]: finalValue }));
   };
 
@@ -51,33 +51,33 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setPage(1); // Reset to the first page for a new search
-    setTotal(0); // Reset total, as it's unknown for a new query
-    setActiveQuery(params); // Trigger the search effect
+    setPage(1); 
+    setTotal(0);
+    setInterpretedQuery(null); // Clear previous AI SQL
+
+    // Trigger the effect by setting activeQuery based on the current mode
+    if (searchMode === "params") {
+        setActiveQuery({ mode: "params", ...params });
+    } else {
+        setActiveQuery({ mode: "ai", prompt: aiPrompt });
+    }
   };
   
   const handleReset = () => {
     setParams({
-      q: "",
-      country: "",
-      source_platform: "",
-      source_name: "",
-      macom: "",
-      created_from: "",
-      created_to: "",
-      location: "",
-      created_by: "",
-      requirement: "", // === NEW: Reset requirement field ===
+      q: "", country: "", source_platform: "", source_name: "", macom: "",
+      created_from: "", created_to: "", location: "", created_by: "", requirement: "",
     });
+    setAiPrompt("");
     setActiveQuery(null);
     setResults([]);
     setError(null);
+    setInterpretedQuery(null);
     setPage(1);
     setTotal(0);
   }
 
   useEffect(() => {
-    // Do not run effect if no search has been submitted
     if (!activeQuery) {
       setResults([]);
       return;
@@ -89,29 +89,53 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
       setError(null);
 
       const offset = (page - 1) * limit;
-      const urlParams = new URLSearchParams();
-      
-      // Iterate over activeQuery to build params. 
-      // This automatically picks up 'requirement' if it exists.
-      for (const key in activeQuery) {
-        if (activeQuery[key]) {
-          urlParams.append(key, activeQuery[key]);
-        }
-      }
-      urlParams.append("limit", limit);
-      urlParams.append("offset", offset);
 
       try {
-        const res = await fetch(`${BASE}/reports?${urlParams.toString()}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-        });
+        let res;
+        
+        // === BRANCH 1: Standard Parameter Search (GET) ===
+        if (activeQuery.mode === "params") {
+            const urlParams = new URLSearchParams();
+            // Exclude internal 'mode' key from URL params
+            for (const key in activeQuery) {
+                if (activeQuery[key] && key !== "mode") {
+                urlParams.append(key, activeQuery[key]);
+                }
+            }
+            urlParams.append("limit", limit);
+            urlParams.append("offset", offset);
+
+            res = await fetch(`${BASE}/reports?${urlParams.toString()}`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+            });
+        } 
+        // === BRANCH 2: AI Search (POST) ===
+        else {
+            res = await fetch(`${BASE}/aisearch`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+                body: JSON.stringify({ 
+                    query: activeQuery.prompt,
+                    limit: limit,
+                    offset: offset // Pass pagination to AI endpoint if supported, otherwise it might just return top N
+                })
+            });
+        }
 
         if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
+        
         const data = await res.json();
         if (cancel) return;
+
         setResults(Array.isArray(data.results) ? data.results : []);
         setTotal(data.total || 0);
+        
+        // If the API returns the generated SQL, save it for display
+        if (data.query_interpreted) {
+            setInterpretedQuery(data.query_interpreted);
+        }
+
       } catch (e) {
         if (!cancel) setError(String(e));
       } finally {
@@ -131,53 +155,105 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 
   return (
     <div className="space-y-6">
-      {/* Search Form */}
-      <form onSubmit={handleSearch} onReset={handleReset} className="p-4 bg-slate-800 border border-slate-600 rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Input label="Full-Text Search" name="q" value={params.q} onChange={handleParamChange} placeholder="Search title, body..." />
-          
-          {/* === NEW: Requirement Input Field === */}
-          <Input label="Requirement ID" name="requirement" value={params.requirement} onChange={handleParamChange} placeholder="16692" />
-          
-          <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="A0000" />
-          <div>
-            <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">
-              Source Platform
-            </label>
-            <select
-              id="source_platform"
-              name="source_platform"
-              value={params.source_platform}
-              onChange={handleParamChange}
-              className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500"
+      
+      {/* Search Container */}
+      <div className="p-4 bg-slate-800 border border-slate-600 rounded-lg">
+        
+        {/* Toggle Tabs */}
+        <div className="flex space-x-6 border-b border-slate-600 pb-3 mb-4">
+            <button 
+                type="button"
+                onClick={() => setSearchMode("params")}
+                className={`text-sm font-medium transition-colors ${searchMode === "params" ? "text-blue-400 border-b-2 border-blue-400 -mb-3.5 pb-3" : "text-slate-400 hover:text-slate-200"}`}
             >
-              <option value="">Select a Platform</option>
-              {platformOptions.map(platform => (
-                <option key={platform} value={platform}>
-                  {platform}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
-          <Input label="Country" name="country" value={params.country} onChange={handleParamChange} placeholder="KUWAIT" />
-          <Input label="Location" name="location" value={params.location} onChange={handleParamChange} placeholder="Baghdad" />
-          <Input label="Source Name" name="source_name" value={params.source_name} onChange={handleParamChange} placeholder="@example_channel" />
-          <Input type="date" label="Created After" name="created_from" value={params.created_from} onChange={handleParamChange} />
-          <Input type="date" label="Created Before" name="created_to" value={params.created_to} onChange={handleParamChange} />
+                Parameter Search
+            </button>
+            <button 
+                type="button"
+                onClick={() => setSearchMode("ai")}
+                className={`text-sm font-medium transition-colors ${searchMode === "ai" ? "text-purple-400 border-b-2 border-purple-400 -mb-3.5 pb-3" : "text-slate-400 hover:text-slate-200"}`}
+            >
+                ✨ AI Search
+            </button>
         </div>
-        <div className="flex items-center gap-4 mt-4">
-          <button type="submit" className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-md text-white font-semibold">
-            Search
-          </button>
-           <button type="reset" className="px-4 py-2 text-sm bg-slate-600 hover:bg-slate-500 rounded-md text-slate-200">
-            Reset
-          </button>
-        </div>
-      </form>
+
+        <form onSubmit={handleSearch} onReset={handleReset}>
+            
+            {/* === MODE 1: STANDARD FORM === */}
+            {searchMode === "params" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Input label="Full-Text Search" name="q" value={params.q} onChange={handleParamChange} placeholder="Search title, body..." />
+                <Input label="Requirement ID" name="requirement" value={params.requirement} onChange={handleParamChange} placeholder="16692" />
+                <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="A0000" />
+                <div>
+                    <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">Source Platform</label>
+                    <select id="source_platform" name="source_platform" value={params.source_platform} onChange={handleParamChange} className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Select a Platform</option>
+                    {platformOptions.map(platform => (
+                        <option key={platform} value={platform}>{platform}</option>
+                    ))}
+                    </select>
+                </div>
+                <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
+                <Input label="Country" name="country" value={params.country} onChange={handleParamChange} placeholder="KUWAIT" />
+                <Input label="Location" name="location" value={params.location} onChange={handleParamChange} placeholder="Baghdad" />
+                <Input label="Source Name" name="source_name" value={params.source_name} onChange={handleParamChange} placeholder="@example_channel" />
+                <Input type="date" label="Created After" name="created_from" value={params.created_from} onChange={handleParamChange} />
+                <Input type="date" label="Created Before" name="created_to" value={params.created_to} onChange={handleParamChange} />
+                </div>
+            )}
+
+            {/* === MODE 2: AI INPUT === */}
+            {searchMode === "ai" && (
+                <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                    <label htmlFor="aiPrompt" className="block text-sm font-medium text-slate-300">
+                        Describe the reports you need
+                    </label>
+                    <textarea 
+                        id="aiPrompt"
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="e.g., Find all reports about drone strikes in Iraq from the last 2 weeks..."
+                        className="w-full h-24 bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-purple-500 focus:border-purple-500 placeholder:text-slate-600 resize-none"
+                    />
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
+                        Powered by Claude 3.5 Sonnet (Generative SQL)
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center gap-4 mt-6">
+                <button 
+                    type="submit" 
+                    className={`px-6 py-2 text-sm rounded-md text-white font-semibold transition-colors ${
+                        searchMode === 'ai' 
+                        ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
+                        : 'bg-blue-600 hover:bg-blue-500'
+                    }`}
+                >
+                    {searchMode === 'ai' ? 'Generate Query & Search' : 'Search Reports'}
+                </button>
+                <button type="reset" className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200">
+                    Reset
+                </button>
+            </div>
+        </form>
+      </div>
       
       {/* Results Section */}
       <div className="space-y-4">
+        
+        {/* AI Transparency Box: Shows the user the SQL that was generated */}
+        {searchMode === "ai" && interpretedQuery && (
+            <div className="px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg">
+                <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Generated SQL Query</p>
+                <code className="text-xs text-purple-300 font-mono break-all block">
+                    {interpretedQuery}
+                </code>
+            </div>
+        )}
+
         <PaginationHeader
           start={startItem}
           end={endItem}
@@ -188,14 +264,23 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
           loading={loading}
         />
 
-        {loading && <div className="text-slate-300">Searching...</div>}
-        {error && <div className="text-red-400">Error: {error}</div>}
+        {loading && (
+            <div className="text-slate-300 flex items-center gap-2">
+                {searchMode === 'ai' ? (
+                    <>
+                        <span className="animate-pulse">✨</span> Thinking...
+                    </>
+                ) : "Searching..."}
+            </div>
+        )}
+        
+        {error && <div className="text-red-400 bg-red-900/20 p-3 rounded border border-red-800">Error: {error}</div>}
+        
         {!loading && !error && activeQuery && results.length === 0 && (
-          <div className="text-slate-300">No reports found matching your criteria.</div>
+          <div className="text-slate-300 italic">No reports found matching your criteria.</div>
         )}
 
         {results.length > 0 && (
-          // 2. Pass the prop down to the results table
           <ResultsTable rows={results} onViewReport={onViewReport} />
         )}
       </div>
@@ -204,7 +289,7 @@ export default function ReportSearch({ onViewReport }) { // 1. Accept the onView
 }
 
 
-/* ---------- Sub-components ---------- */
+/* ---------- Sub-components (Unchanged) ---------- */
 
 function Input({ label, name, type = "text", value, onChange, placeholder = "" }) {
   return (
@@ -228,9 +313,7 @@ function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, 
     ? `Showing ${start} - ${end} of ${total}`
     : `Showing ${start} - ${end}`;
   
-  if (start === 0 && total === 0) {
-    return null; // Don't show header if there are no results
-  }
+  if (start === 0 && total === 0) return null;
 
   return (
     <div className="flex justify-between items-center text-sm text-slate-400">
@@ -255,7 +338,6 @@ function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, 
   );
 }
 
-// 3. Update ResultsTable to use the new prop
 function ResultsTable({ rows, onViewReport }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-600">
@@ -265,7 +347,7 @@ function ResultsTable({ rows, onViewReport }) {
             <Th>Report Title</Th>
             <Th>Date of Information</Th>
             <Th>Country</Th>
-            <Th>Location</Th> {/* Added */}
+            <Th>Location</Th>
             <Th>Body</Th>
           </tr>
         </thead>
@@ -276,17 +358,16 @@ function ResultsTable({ rows, onViewReport }) {
               <tr
                 key={id}
                 className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                // This onClick now opens the modal
                 onClick={() => onViewReport(id)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onViewReport(id); }}}
-                role="button" // Changed from "link"
+                role="button"
                 tabIndex={0}
                 title="View report details"
               >
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information)}</Td>
                 <Td>{nz(r.country)}</Td>
-                <Td>{nz(r.location)}</Td> {/* Added */}
+                <Td>{nz(r.location)}</Td>
                 <Td className="max-w-[48ch]">{truncate(nz(r.report_body), 240)}</Td>
               </tr>
             );
@@ -297,34 +378,19 @@ function ResultsTable({ rows, onViewReport }) {
   );
 }
 
-/* ---------- Reusable Components & Utils (from ViewAndSearch) ---------- */
+/* ---------- Reusable Components & Utils ---------- */
 
 function Th({ children }) {
-  return (
-    <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">
-      {children}
-    </th>
-  );
+  return <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">{children}</th>;
 }
 function Td({ children, className = "" }) {
   return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
 }
-
 function fmtDate(d) {
   if (!d) return "—";
-  // The API uses a standard date format, so complex parsing might not be needed.
-  // Kept simple for now. Add back parseDDMMMYY if that format is also used here.
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
   if (!Number.isFinite(t)) return String(d);
   return new Date(t).toLocaleDateString();
 }
-
-function nz(v) {
-  if (v === null || v === undefined) return "";
-  return String(v);
-}
-
-function truncate(s, n) {
-  if (!s) return "";
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
+function nz(v) { return (v === null || v === undefined) ? "" : String(v); }
+function truncate(s, n) { return (!s) ? "" : (s.length > n ? s.slice(0, n - 1) + "…" : s); }
