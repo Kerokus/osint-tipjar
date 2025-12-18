@@ -27,7 +27,6 @@ export default function SectionA_Metadata({
     }
     const objectUrl = URL.createObjectURL(imgFile);
     setPreviewUrl(objectUrl);
-    // Cleanup function to revoke the object URL
     return () => URL.revokeObjectURL(objectUrl);
   }, [imgFile]);
 
@@ -87,7 +86,7 @@ export default function SectionA_Metadata({
                   Preview
                 </button>
 
-                {/* === NEW: Classification Buttons === */}
+                {/* === Classification Buttons === */}
                 <div className="absolute top-2 left-2 z-20 flex flex-col items-start gap-2">
                   <span className="text-xs font-bold bg-slate-900/80 px-2 py-1 rounded text-white">CLASSIFY IMAGE:</span>
                   <button
@@ -118,7 +117,7 @@ export default function SectionA_Metadata({
                     CUI//REL
                   </button>
                 </div>
-                {/* === END NEW SECTION === */}
+                {/* === END SECTION === */}
 
               </>
             ) : (

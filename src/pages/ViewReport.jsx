@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 
-// Helper functions reused from CreateReport.jsx to generate outputs
+
 function classificationForOutput(val) {
   if (val === "U") return "U";
   if (val === "CUI") return "CUI";
@@ -21,7 +21,7 @@ function cleanSourceType(t) {
   return t.replace(/\s*User$/i, "").trim();
 }
 
-// === NEW: Helper to safely parse Postgres array strings or JSON arrays ===
+// Helper to safely parse Postgres array strings or JSON arrays
 function parseRequirements(reqs) {
   if (!reqs) return [];
   if (Array.isArray(reqs)) return reqs;
@@ -138,7 +138,7 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
 
   const copy = async (text) => navigator.clipboard.writeText(text ?? "");
 
-  // === NEW: Parse requirements for display ===
+  // Parse requirements for display
   const requirementList = report ? parseRequirements(report.requirements) : [];
 
   return (
@@ -170,7 +170,7 @@ export default function ViewReport({ reportId, onClose, onDeleteSuccess, onEdit 
               <ImagePane imageUrl={report.image_url} />
             </div>
 
-            {/* === NEW: Requirements Display Section === */}
+            {/* === Requirements Display Section === */}
             {requirementList.length > 0 && (
                 <div className="pt-2 border-t border-slate-700">
                     <label className="block text-xs font-semibold text-slate-400 mb-2">Collection Requirements</label>

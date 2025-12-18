@@ -2,13 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 
 export default function ReportSearch({ 
     onViewReport, 
-    // New Props for Selection
     selectedMap,
     onToggleReport,
     onBatchSelect
 }) {
   
-  // === Toggle State ===
+  // Toggle State
   const [searchMode, setSearchMode] = useState("ai");
   const [aiPrompt, setAiPrompt] = useState("");
   const [interpretedQuery, setInterpretedQuery] = useState(null);
@@ -124,7 +123,7 @@ export default function ReportSearch({
   const endItem = offset + results.length;
   const hasNextPage = results.length === limit;
 
-  // --- Checkbox Logic ---
+  // Logic for the checkboxes
   const getReportId = (r) => r.id ?? r.report_id ?? r._id;
   
   // Are all currently visible results selected?
@@ -222,8 +221,7 @@ export default function ReportSearch({
                     Reset
                 </button>
                 
-                {/* Note: The "Send to Intsum" button is removed from here. 
-                    It is now accessed via the "View Selected" modal in the parent component. */}
+                
             </div>
         </form>
       </div>
@@ -275,7 +273,7 @@ export default function ReportSearch({
   );
 }
 
-// Updated Sub-components
+// Sub-components
 
 function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSelected, onToggleAll }) {
   return (
@@ -334,7 +332,6 @@ function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSele
   );
 }
 
-// Standard Inputs and Utils remain the same...
 function Input({ label, name, type = "text", value, onChange, placeholder = "" }) {
   return (
     <div>
@@ -353,7 +350,6 @@ function Input({ label, name, type = "text", value, onChange, placeholder = "" }
 }
 
 function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
-    // ... (existing code)
     if (start === 0 && total === 0) return null;
     const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
     return (

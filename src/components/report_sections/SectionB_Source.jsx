@@ -16,7 +16,7 @@ export default function SectionB_Source({
   uid, setUid,
   articleTitle, setArticleTitle,
   articleAuthor, setArticleAuthor,
-  requirements, setRequirements, // Received from parent
+  requirements, setRequirements, 
   isUspiLocked, 
 }) {
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
@@ -49,7 +49,7 @@ export default function SectionB_Source({
 
   // height = depth of 4 rows + requirements row
   const formRef = useRef(null);
-  const toolH = useRef(280); // Increased default height slightly
+  const toolH = useRef(280); 
   useLayoutEffect(() => {
     if (!formRef.current) return;
     const rows = formRef.current.querySelectorAll(".form-row");

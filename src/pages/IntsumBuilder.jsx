@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { generateDocx } from "../components/documentBuilder"; 
 
 export default function IntsumBuilder({ initialReports }) {
-  // --- State ---
+  // Main state
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [customStart, setCustomStart] = useState(""); 
   const [customEnd, setCustomEnd] = useState("");
@@ -19,7 +19,7 @@ export default function IntsumBuilder({ initialReports }) {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryErr, setSummaryErr] = useState(null);
 
-  // --- NEW STATE: Custom Summary Modal ---
+  // Custom Summary Modal State
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customOutput, setCustomOutput] = useState("");
@@ -27,14 +27,14 @@ export default function IntsumBuilder({ initialReports }) {
   const [customErr, setCustomErr] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // New State for Captions (Key: reportId, Value: string)
+  // State for Captions (Key: reportId, Value: string)
   const [captions, setCaptions] = useState({});
 
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
   const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
 
-  // --- Effect: Load imported reports if they exist ---
+  // Load imported reports if they exist
   useEffect(() => {
     if (initialReports && initialReports.length > 0) {
       setReports(initialReports);
@@ -46,7 +46,8 @@ export default function IntsumBuilder({ initialReports }) {
     }
   }, [initialReports]);
 
-  // --- Configuration: Category Definitions ---
+  // Configuration: Category Definitions
+  // This breaks the INTSUM out into separate categories by region
   const CATEGORY_DEFINITIONS = {
     "Israel-Hamas Ceasefire": ["ISRAEL", "GAZA", "GAZA STRIP", "WEST BANK", "PALESTINE", "PALESTINIAN TERRITORY", "ISR", "PSE", "XGZ", "XWB"],
     "Levant": ["LEBANON", "SYRIA", "JORDAN", "TURKEY", "CYPRUS", "LBN", "SYR", "JOR", "TUR", "CYP"],
@@ -58,7 +59,7 @@ export default function IntsumBuilder({ initialReports }) {
 
   const SECTION_ORDER = ["Israel-Hamas Ceasefire", "Levant", "Iranian Threat Network", "Iraq", "Arabian Peninsula", "Pakistan", "Additional Reporting"];
 
-  // --- Helper: Categorize Report ---
+  // Categorize Report
   const getCategory = (r) => {
     const country = (r.country || "").toUpperCase().trim();
     for (const [section, keywords] of Object.entries(CATEGORY_DEFINITIONS)) {
@@ -68,7 +69,7 @@ export default function IntsumBuilder({ initialReports }) {
     return "Additional Reporting";
   };
 
-  // --- Helper: Parse DTG ---
+  // Parse DTG
   const parseDtgFromTitle = (title) => {
     if (!title) return null;
     const regex = /^(\d{2})(\d{4})Z([A-Z]{3})(\d{2})_/i;
@@ -85,7 +86,7 @@ export default function IntsumBuilder({ initialReports }) {
 
   const toApiDate = (dateObj) => dateObj.toISOString().split("T")[0];
 
-  // --- Fetch Logic ---
+  // Fetch Logic
   const handleFetch = async (startObj, endObj, label) => {
     setLoading(true);
     setErr(null);
@@ -129,7 +130,7 @@ export default function IntsumBuilder({ initialReports }) {
     }
   };
 
-  // --- Main Summary Generation ---
+  // Main Summary Generation
   const handleGenerateSummary = async () => {
     if (reports.length === 0) return;
     setGeneratingSummary(true);
@@ -159,7 +160,7 @@ export default function IntsumBuilder({ initialReports }) {
     }
   };
 
-  // --- NEW: Custom Summary Handler ---
+  // Custom Summary Handler
   const handleCustomGenerate = async () => {
     if (!customInput.trim()) return;
     setCustomLoading(true);
@@ -215,10 +216,10 @@ export default function IntsumBuilder({ initialReports }) {
     setGeneratedRangeLabel("");
     setErr(null);
     setSummaryErr(null);
-    setReportType("INTSUM"); // Reset to default
+    setReportType("INTSUM"); 
   };
 
-  // --- Download Handler ---
+  // Download Handler
   const handleDownloadDocx = () => {
     generateDocx({
       reports,
@@ -234,7 +235,7 @@ export default function IntsumBuilder({ initialReports }) {
     });
   };
 
-  // --- Standard Ranges ---
+  // Standard Ranges
   const fetchLast24 = () => {
     const now = new Date();
     const end = new Date(now);
@@ -256,11 +257,12 @@ export default function IntsumBuilder({ initialReports }) {
     handleFetch(new Date(customStart), new Date(customEnd), "Custom Range");
   };
 
-  // --- Sorting & Categorization Logic ---
+  // Sorting & Categorization Logic
   const displayList = useMemo(() => {
     if (reports.length === 0) return [];
     
-    // === Logic: Single Group for Imports ===
+    // Single Group for Imports
+    // Reports imported from search are not broken into regions
     if (generatedRangeLabel === "Imported Search Results") {
         return [
             { type: "HEADER", title: "RFI Results" },
@@ -268,7 +270,7 @@ export default function IntsumBuilder({ initialReports }) {
         ];
     }
 
-    // === Logic: Regional Grouping ===
+    // Regional Grouping
     const groups = {};
     SECTION_ORDER.forEach(sec => groups[sec] = []);
     reports.forEach(r => {
@@ -310,7 +312,7 @@ export default function IntsumBuilder({ initialReports }) {
 
   const hasUsper = useMemo(() => reports.some(r => r.is_usper || r.has_uspi), [reports]);
 
-  // --- Caption Update Helper ---
+  // Caption Update Helper
   const updateCaption = (id, text) => {
     setCaptions(prev => ({ ...prev, [id]: text }));
   };
@@ -522,7 +524,7 @@ export default function IntsumBuilder({ initialReports }) {
   );
 }
 
-// --- Report Item & Helpers (Unchanged) ---
+// --- Report Item & Helpers ---
 function ReportItem({ r, citationId, parseDtgFromTitle, caption, onCaptionChange }) {
     const [imgUrl, setImgUrl] = useState(null);
     const [isEditing, setIsEditing] = useState(false);

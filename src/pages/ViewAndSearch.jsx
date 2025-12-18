@@ -12,7 +12,7 @@ export default function ViewAndSearch({ onSendToIntsum }) {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [editingReport, setEditingReport] = useState(null);
 
-  // === NEW: Selection Persistence State ===
+  // Selection Persistence State
   // We use a Map where Key = Report ID, Value = Report Object
   const [selectedReports, setSelectedReports] = useState(new Map());
   const [showSelectionModal, setShowSelectionModal] = useState(false);
@@ -65,8 +65,6 @@ export default function ViewAndSearch({ onSendToIntsum }) {
     onSendToIntsum(reportArray);
     setShowSelectionModal(false);
   };
-
-  // --------------------------
 
   const fetchReports = useCallback(async () => {
     let cancel = false;
@@ -160,14 +158,12 @@ export default function ViewAndSearch({ onSendToIntsum }) {
             onPageChange={setPage}
             loading={loading}
           />
-          {/* Note: If you want selection in View All mode, pass props here too */}
           <ViewAllTable rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
         </div>
       ) : (
         // Pass selection props down to ReportSearch
         <ReportSearch 
             onViewReport={setSelectedReportId} 
-            // We do NOT pass onSendToIntsum here anymore, as the modal handles it
             selectedMap={selectedReports}
             onToggleReport={toggleReportSelection}
             onBatchSelect={setBatchSelection}
@@ -193,7 +189,7 @@ export default function ViewAndSearch({ onSendToIntsum }) {
         />
       )}
 
-      {/* NEW: Selected Reports Modal */}
+      {/* Selected Reports Modal */}
       {showSelectionModal && (
         <SelectedReportsModal 
             selectedMap={selectedReports}
@@ -267,7 +263,6 @@ function SelectedReportsModal({ selectedMap, onClose, onClear, onRemove, onSend 
 }
 
 function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
-  // ... (Same as before)
   const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
   if (start === 0 && end === 0) return null;
   return (
@@ -282,7 +277,6 @@ function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, 
 }
 
 function ViewAllTable({ rows, loading, err, onViewReport }) {
-  // ... (Same as before, or you could add checkboxes here too if desired)
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
   if (err) return <div className="text-red-400">Error: {err}</div>;
   if (!rows?.length) return <div className="text-slate-300">No reports.</div>;
@@ -317,7 +311,7 @@ function ViewAllTable({ rows, loading, err, onViewReport }) {
   );
 }
 
-// Utility functions (Th, Td, fmtDate, nz, truncate, parseDDMMMYY) remain the same...
+// Utility functions
 function Th({ children }) { return <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">{children}</th>; }
 function Td({ children, className = "" }) { return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>; }
 function fmtDate(d) {

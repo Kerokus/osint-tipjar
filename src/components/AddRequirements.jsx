@@ -20,7 +20,7 @@ export default function AddRequirements({ isOpen, onClose, onConfirm, initialSel
 
   // Fetch requirements on mount
   useEffect(() => {
-    if (!isOpen) return; // Only fetch if open to save resources
+    if (!isOpen) return; 
     
     async function fetchReqs() {
       setLoading(true);

@@ -33,7 +33,6 @@ const timezones = [
 ];
 
 // Helper to get today's date in YYYY-MM-DD format for the default state
-// (function unchanged)
 const getToday = () => {
   return new Date().toISOString().split('T')[0];
 };
@@ -48,7 +47,6 @@ export default function TimeZoneTool() {
   const [outputTime, setOutputTime] = useState('');
   const [error, setError] = useState('');
 
-  // (handleTimeChange function is unchanged)
   const handleTimeChange = (e) => {
     // Only allow 4 digits
     const val = e.target.value.replace(/[^0-9]/g, '');

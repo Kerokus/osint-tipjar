@@ -371,7 +371,7 @@ function UploadTab({ onSuccess }) {
   );
 }
 
-// --- NEW: Clear Tab ---
+// "Clear all" Tab
 
 function ClearTab({ onSuccess }) {
   const [clearing, setClearing] = useState(false);
@@ -421,7 +421,7 @@ function ClearTab({ onSuccess }) {
   );
 }
 
-// --- Add Category Modal ---
+// Add Category Modal
 
 function AddCategoryModal({ onClose, onSuccess, BASE, API_KEY }) {
   const handleSubmit = async (e) => {

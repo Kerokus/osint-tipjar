@@ -153,7 +153,7 @@ export default function CreateReport() {
     setChatChannel(chatChannels[overallClass] || chatChannels["U"]);
   }, [overallClass]);
 
-  // === MODIFIED: Update image classification tracking state ===
+  // Update image classification tracking state
   const handleSetImgFile = (file) => {
     setImgFile(file);
     if (file) {
@@ -166,7 +166,7 @@ export default function CreateReport() {
     }
   };
 
-  // === MODIFIED: Update image classification tracking state ===
+  // Handle classification of image
   const handleClassifyImage = async (classification) => {
     if (!originalImgFile) {
       alert("Please upload an image first.");
@@ -275,7 +275,7 @@ export default function CreateReport() {
     maxClass
   ]);
   
-  // New "Combiner" effects
+  // "Combiner" effects
   useEffect(() => {
     // The final collectorClass is the higher of the manual and auto settings
     setCollectorClass(maxClass(manualCollectorClass, autoCollectorClass));
@@ -466,7 +466,7 @@ const handleSourceSelect = (source) => {
     return t.trim().replace(/\s*User$/i, "");
   }
 
-  // === MODIFIED: Reset the new state variable here ===
+  // Reset the form when "New Form" is clicked
   const clearForm = () => {
     setMacom("CENTCOM");
     setCountry("");
@@ -476,7 +476,7 @@ const handleSourceSelect = (source) => {
     setImgFile(null);
     setOriginalImgFile(null);
     setImageClass("U");
-    setImageHasBeenClassified(false); // Reset this
+    setImageHasBeenClassified(false); 
     setUsper(false);
     setUspi(false);
     setSourceType("Website");
@@ -485,7 +485,7 @@ const handleSourceSelect = (source) => {
     setUid("");
     setArticleTitle("N/A");
     setArticleAuthor("N/A");
-    setRequirements([]); // RESET REQUIREMENTS
+    setRequirements([]); 
     setReportBody("");
     setCollectorClass("U");
     setSourceDescription("");
@@ -650,12 +650,11 @@ const handleSourceSelect = (source) => {
     }
   }
 
-  // === MODIFIED: Add the validation check at the beginning of the function ===
+  // Submit the form
   async function handleSubmit() {
-    // Check if an image exists but has not been explicitly classified
     if (imgFile && !imageHasBeenClassified) {
       alert("Please classify the uploaded image before submitting the report.");
-      return; // Stop the submission
+      return; 
     }
 
     if (!chatMessageSent) {
@@ -731,7 +730,7 @@ const handleSourceSelect = (source) => {
         uid,
         article_title: articleTitle,
         article_author: articleAuthor,
-        requirements: requirements, // ADDED REQUIREMENTS TO PAYLOAD
+        requirements: requirements, 
         report_body: reportBody,
         collector_classification: collectorClass,
         source_description: sourceDescription,

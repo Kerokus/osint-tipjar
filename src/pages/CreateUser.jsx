@@ -28,7 +28,7 @@ export default function CreateUser() {
     setErr("");
     setMsg("");
     try {
-      // 1) Create the user (API requires added_by)
+      // 1) Create the user
       const createRes = await fetch(`${BASE}/users`, {
         method: "POST",
         headers: {

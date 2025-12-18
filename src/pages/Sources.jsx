@@ -20,11 +20,11 @@ export default function Sources() {
   
   // State for the modals
   const [selectedSource, setSelectedSource] = useState(null);
-  const [isAddingSource, setIsAddingSource] = useState(false); // --- ADDED --- State for the new modal
+  const [isAddingSource, setIsAddingSource] = useState(false); 
 
   // State for pagination
   const [page, setPage] = useState(1);
-  const [limit] = useState(50); // Hardcoded limit as requested
+  const [limit] = useState(50); 
   const [total, setTotal] = useState(0);
 
   // Admin status from local storage

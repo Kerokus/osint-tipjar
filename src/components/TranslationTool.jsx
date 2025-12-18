@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // --- Language Data ---
-// Parsed from AWS-lang-list.txt
+// From AWS-lang-list.txt
 const languages = [
   { name: "Afrikaans", code: "af" },
   { name: "Albanian", code: "sq" },

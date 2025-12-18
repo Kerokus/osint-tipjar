@@ -25,7 +25,7 @@ export const generateDocx = async ({
   rangeLabel,
   uniqueRequirements,
   hasUsper,
-  captions, // Passed from parent state
+  captions, 
   reportCitationMap,
   apiKey,
   imageApiKey
@@ -77,6 +77,7 @@ export const generateDocx = async ({
   }
 
   // 3. Warning Box (Using a Table for background/borders)
+  // THe warning changes based on whether there are US Persons in the citation
   const warningText = [
     new TextRun({ text: "WARNING: ", bold: true, underline: { type: "single" }, font: "Arial", size: 24 }),
     new TextRun({ text: "This is an information report, not finally evaluated intelligence. MGRS locations are for general reference purposes only and do not represent the actual location of events unless otherwise specified. ", font: "Arial", size: 24 }),

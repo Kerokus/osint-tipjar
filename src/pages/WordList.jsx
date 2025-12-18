@@ -16,7 +16,7 @@ export default function WordList() {
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
 
-  // --- Data Fetching Effect ---
+  // Data Fetching
 
   const fetchWords = useCallback(async () => {
     let cancel = false;
@@ -48,7 +48,7 @@ export default function WordList() {
     fetchWords();
   }, [fetchWords]);
 
-  // --- Render Logic ---
+  // Render Logic
 
   return (
     <div className="space-y-6 p-4">

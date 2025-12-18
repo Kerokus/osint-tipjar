@@ -64,6 +64,7 @@ export default function Login({ onSuccess }) {
 
       // Set auth in local storage
       // TO DO: Move this to a session with cookie instead of local with JWT
+      // This will require a backend API rewrite using the "secrets" library
       localStorage.setItem("token", tokenFromLogin);
       localStorage.setItem("cin", cinFromLogin);
       localStorage.setItem("is_admin", String(!!data.is_admin));

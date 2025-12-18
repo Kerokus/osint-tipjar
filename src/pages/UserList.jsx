@@ -213,7 +213,7 @@ function UserModal({ cin, base, apiKey, onClose, onDeleted, onUpdated }) {
     "is_admin",
     "last_login",
     "added_by",
-    "chatsurfer_display_name", // before comments
+    "chatsurfer_display_name", 
     "user_comments",
   ];
   const nonEditable = new Set(["added_by", "last_login"]);
