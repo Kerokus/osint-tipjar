@@ -3,7 +3,8 @@ import ReportSearch from "./ReportSearch";
 import ViewReport from "./ViewReport";
 import EditReport from "./EditReport";
 
-export default function ViewAndSearch() {
+// 1. Accept the new prop here
+export default function ViewAndSearch({ onSendToIntsum }) {
   const [mode, setMode] = useState("view");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +103,11 @@ export default function ViewAndSearch() {
           <ViewAllTable rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
         </div>
       ) : (
-        <ReportSearch onViewReport={setSelectedReportId} />
+        // 2. Pass the prop down to ReportSearch
+        <ReportSearch 
+            onViewReport={setSelectedReportId} 
+            onSendToIntsum={onSendToIntsum} 
+        />
       )}
       
       {selectedReportId && (

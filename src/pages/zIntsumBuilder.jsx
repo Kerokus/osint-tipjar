@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
-// 1. IMPORT THE HELPER
 import { generateDocx } from "../components/documentBuilder"; 
 
-export default function IntsumBuilder() {
+export default function IntsumBuilder({ initialReports }) {
   // --- State ---
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [customStart, setCustomStart] = useState(""); 
@@ -17,12 +16,23 @@ export default function IntsumBuilder() {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryErr, setSummaryErr] = useState(null);
 
-  // 2. NEW STATE FOR CAPTIONS (Key: reportId, Value: string)
+  // New State for Captions (Key: reportId, Value: string)
   const [captions, setCaptions] = useState({});
 
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
   const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
+
+  // --- Effect: Load imported reports if they exist ---
+  useEffect(() => {
+    if (initialReports && initialReports.length > 0) {
+      setReports(initialReports);
+      setGeneratedRangeLabel("Imported Search Results");
+      setErr(null);
+      setSummary("");
+      setCaptions({});
+    }
+  }, [initialReports]);
 
   // --- Configuration: Category Definitions ---
   const CATEGORY_DEFINITIONS = {
@@ -69,7 +79,7 @@ export default function IntsumBuilder() {
     setErr(null);
     setReports([]);
     setSummary(""); 
-    setCaptions({}); // Reset captions on new fetch
+    setCaptions({});
     setGeneratedRangeLabel(label);
 
     try {
@@ -128,7 +138,7 @@ export default function IntsumBuilder() {
     }
   };
 
-  // --- 3. DOWNLOAD HANDLER ---
+  // --- Download Handler ---
   const handleDownloadDocx = () => {
     generateDocx({
       reports,
@@ -137,7 +147,7 @@ export default function IntsumBuilder() {
       rangeLabel: generatedRangeLabel,
       uniqueRequirements,
       hasUsper,
-      captions, // Pass the captured captions state
+      captions,
       reportCitationMap,
       apiKey: API_KEY,
       imageApiKey: IMG_API_KEY
@@ -156,8 +166,8 @@ export default function IntsumBuilder() {
   };
 
   const fetchLast12 = () => {
-    const end = new Date(); // Current time (Now)
-    const start = new Date(end.getTime() - (12 * 60 * 60 * 1000)); // Now minus 12 hours (in ms)
+    const end = new Date();
+    const start = new Date(end.getTime() - (12 * 60 * 60 * 1000));
     handleFetch(start, end, `Last 12 Hours (${fmtDateTime(start)} - ${fmtDateTime(end)})`);
   };
 
@@ -169,6 +179,16 @@ export default function IntsumBuilder() {
   // --- Sorting & Categorization Logic ---
   const displayList = useMemo(() => {
     if (reports.length === 0) return [];
+    
+    // === NEW LOGIC: Single Group for Imports ===
+    if (generatedRangeLabel === "Imported Search Results") {
+        return [
+            { type: "HEADER", title: "RFI Results" },
+            ...reports.map(r => ({ type: "REPORT", data: r }))
+        ];
+    }
+
+    // === ORIGINAL LOGIC: Regional Grouping ===
     const groups = {};
     SECTION_ORDER.forEach(sec => groups[sec] = []);
     reports.forEach(r => {
@@ -184,7 +204,7 @@ export default function IntsumBuilder() {
         else flatList.push({ type: "NSTR" });
     });
     return flatList;
-  }, [reports]);
+  }, [reports, generatedRangeLabel]);
 
   const reportCitationMap = useMemo(() => {
       const map = new Map();
@@ -210,7 +230,7 @@ export default function IntsumBuilder() {
 
   const hasUsper = useMemo(() => reports.some(r => r.is_usper || r.has_uspi), [reports]);
 
-  // --- 4. Caption Update Helper ---
+  // --- Caption Update Helper ---
   const updateCaption = (id, text) => {
     setCaptions(prev => ({ ...prev, [id]: text }));
   };
@@ -224,7 +244,6 @@ export default function IntsumBuilder() {
             <h2 className="text-lg font-bold text-slate-100">INTSUM Builder</h2>
             <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-2">
-                    {/* 5. ADD DOWNLOAD BUTTON */}
                     <button
                         onClick={handleDownloadDocx}
                         disabled={reports.length === 0}
@@ -245,7 +264,6 @@ export default function IntsumBuilder() {
             </div>
         </div>
         
-        {/* ... Rest of controls (Date Pickers) ... */}
         <div className="flex flex-wrap gap-4 items-end">
           <button onClick={fetchLast24} disabled={loading} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-medium disabled:opacity-50">
             Last 24 hours (1600Z - 1600Z)
@@ -310,7 +328,6 @@ export default function IntsumBuilder() {
 
               const r = item.data;
               const citationId = reportCitationMap.get(r.id);
-              // 6. PASS CAPTION STATE DOWN
               return (
                   <ReportItem 
                       key={r.id || i} 
@@ -343,7 +360,7 @@ export default function IntsumBuilder() {
   );
 }
 
-// --- Modified Report Item ---
+// --- Report Item & Helpers (Unchanged) ---
 function ReportItem({ r, citationId, parseDtgFromTitle, caption, onCaptionChange }) {
     const [imgUrl, setImgUrl] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -407,8 +424,8 @@ function ReportItem({ r, citationId, parseDtgFromTitle, caption, onCaptionChange
                             <input 
                                 autoFocus
                                 className="text-[8pt] text-center border-b border-gray-400 outline-none w-64 bg-transparent"
-                                value={caption} // Uses Prop from Parent
-                                onChange={(e) => onCaptionChange(e.target.value)} // Calls parent updater
+                                value={caption}
+                                onChange={(e) => onCaptionChange(e.target.value)}
                                 onBlur={() => setIsEditing(false)}
                                 onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
                             />
@@ -427,7 +444,6 @@ function ReportItem({ r, citationId, parseDtgFromTitle, caption, onCaptionChange
     );
 }
 
-// ... Keep existing Formatting Helpers at the bottom ...
 function classificationForOutput(val) {
     if (val === "U") return "U";
     if (val === "CUI") return "CUI";

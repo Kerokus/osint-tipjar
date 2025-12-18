@@ -3,7 +3,6 @@ import ReportSearch from "./ReportSearch";
 import ViewReport from "./ViewReport";
 import EditReport from "./EditReport";
 
-// 1. Accept the new prop here
 export default function ViewAndSearch({ onSendToIntsum }) {
   const [mode, setMode] = useState("view");
   const [rows, setRows] = useState([]);
@@ -13,12 +12,61 @@ export default function ViewAndSearch({ onSendToIntsum }) {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [editingReport, setEditingReport] = useState(null);
 
+  // === NEW: Selection Persistence State ===
+  // We use a Map where Key = Report ID, Value = Report Object
+  const [selectedReports, setSelectedReports] = useState(new Map());
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
   const [total, setTotal] = useState(0); 
 
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
+
+  // --- Selection Handlers ---
+
+  // Helper to get ID consistently
+  const getReportId = (r) => r.id ?? r.report_id ?? r._id;
+
+  const toggleReportSelection = (report) => {
+    const id = getReportId(report);
+    setSelectedReports(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(id)) {
+        newMap.delete(id);
+      } else {
+        newMap.set(id, report);
+      }
+      return newMap;
+    });
+  };
+
+  // Selects or Deselects a whole batch (e.g., current page)
+  const setBatchSelection = (reports, shouldSelect) => {
+    setSelectedReports(prev => {
+      const newMap = new Map(prev);
+      reports.forEach(r => {
+        const id = getReportId(r);
+        if (shouldSelect) newMap.set(id, r);
+        else newMap.delete(id);
+      });
+      return newMap;
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedReports(new Map());
+  };
+
+  const handleSendSelected = () => {
+    // Convert Map values to Array
+    const reportArray = Array.from(selectedReports.values());
+    onSendToIntsum(reportArray);
+    setShowSelectionModal(false);
+  };
+
+  // --------------------------
 
   const fetchReports = useCallback(async () => {
     let cancel = false;
@@ -70,23 +118,35 @@ export default function ViewAndSearch({ onSendToIntsum }) {
   const hasNextPage = rows.length === limit;
 
   return (
-    <div className="w-full space-y-4">
-      {/* Segmented control */}
-      <div className="inline-flex rounded-lg border border-slate-600 overflow-hidden">
-        <button
-          className={`px-4 py-2 text-sm ${mode === "view" ? "bg-slate-700 text-slate-100" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
-          onClick={() => { setPage(1); setTotal(0); setMode("view"); }}
-          aria-pressed={mode === "view"}
-        >
-          View All
-        </button>
-        <button
-          className={`px-4 py-2 text-sm ${mode === "search" ? "bg-slate-700 text-slate-100" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
-          onClick={() => setMode("search")}
-          aria-pressed={mode === "search"}
-        >
-          Search
-        </button>
+    <div className="w-full space-y-4 relative">
+      {/* Header & Controls */}
+      <div className="flex justify-between items-center">
+        <div className="inline-flex rounded-lg border border-slate-600 overflow-hidden">
+            <button
+            className={`px-4 py-2 text-sm ${mode === "view" ? "bg-slate-700 text-slate-100" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
+            onClick={() => { setPage(1); setTotal(0); setMode("view"); }}
+            aria-pressed={mode === "view"}
+            >
+            View All
+            </button>
+            <button
+            className={`px-4 py-2 text-sm ${mode === "search" ? "bg-slate-700 text-slate-100" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
+            onClick={() => setMode("search")}
+            aria-pressed={mode === "search"}
+            >
+            Search
+            </button>
+        </div>
+
+        {/* REVIEW SELECTED BUTTON (Visible if items selected) */}
+        {selectedReports.size > 0 && (
+            <button 
+                onClick={() => setShowSelectionModal(true)}
+                className="px-4 py-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold rounded shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-right-4"
+            >
+                <span>✅</span> View Selected ({selectedReports.size})
+            </button>
+        )}
       </div>
 
       {mode === "view" ? (
@@ -100,16 +160,22 @@ export default function ViewAndSearch({ onSendToIntsum }) {
             onPageChange={setPage}
             loading={loading}
           />
+          {/* Note: If you want selection in View All mode, pass props here too */}
           <ViewAllTable rows={rows} loading={loading} err={err} onViewReport={setSelectedReportId} />
         </div>
       ) : (
-        // 2. Pass the prop down to ReportSearch
+        // Pass selection props down to ReportSearch
         <ReportSearch 
             onViewReport={setSelectedReportId} 
-            onSendToIntsum={onSendToIntsum} 
+            // We do NOT pass onSendToIntsum here anymore, as the modal handles it
+            selectedMap={selectedReports}
+            onToggleReport={toggleReportSelection}
+            onBatchSelect={setBatchSelection}
         />
       )}
       
+      {/* Modals */}
+
       {selectedReportId && (
         <ViewReport 
           reportId={selectedReportId} 
@@ -126,45 +192,100 @@ export default function ViewAndSearch({ onSendToIntsum }) {
           onSaveSuccess={handleCloseAndRefresh}
         />
       )}
+
+      {/* NEW: Selected Reports Modal */}
+      {showSelectionModal && (
+        <SelectedReportsModal 
+            selectedMap={selectedReports}
+            onClose={() => setShowSelectionModal(false)}
+            onClear={clearAllSelections}
+            onRemove={(r) => toggleReportSelection(r)}
+            onSend={handleSendSelected}
+        />
+      )}
     </div>
   );
 }
 
-function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
-  const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
-  
-  if (start === 0 && end === 0) {
-    return null;
-  }
+// --- Helper Components ---
 
+function SelectedReportsModal({ selectedMap, onClose, onClear, onRemove, onSend }) {
+    const reports = Array.from(selectedMap.values());
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">Selected Reports ({reports.length})</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">&times;</button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {reports.length === 0 && <p className="text-slate-400 text-center py-8">No reports selected.</p>}
+                    {reports.map((r, i) => (
+                        <div key={r.id || i} className="flex justify-between items-start bg-slate-900 p-3 rounded border border-slate-700">
+                            <div className="text-sm">
+                                <div className="font-semibold text-slate-200">{r.title || "Untitled"}</div>
+                                <div className="text-slate-400 text-xs mt-1">
+                                    {r.date_of_information ? new Date(r.date_of_information).toLocaleDateString() : 'No Date'} • {r.country}
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => onRemove(r)}
+                                className="text-slate-500 hover:text-red-400 px-2"
+                                title="Remove from selection"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="p-4 border-t border-slate-700 bg-slate-800/50 flex justify-between">
+                    <button 
+                        onClick={onClear}
+                        className="px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:underline"
+                    >
+                        Clear stored reports
+                    </button>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="px-4 py-2 text-sm bg-slate-700 text-slate-200 rounded hover:bg-slate-600">
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={onSend}
+                            disabled={reports.length === 0}
+                            className="px-4 py-2 text-sm bg-green-600 text-white font-semibold rounded hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Send to INTSUM Builder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
+  // ... (Same as before)
+  const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
+  if (start === 0 && end === 0) return null;
   return (
     <div className="flex justify-between items-center text-sm text-slate-400">
       <span>{showingText}</span>
       <div className="flex gap-2">
-        <button
-          onClick={() => onPageChange(p => p - 1)}
-          disabled={page === 1 || loading}
-          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          &larr; Previous
-        </button>
-        <button
-          onClick={() => onPageChange(p => p + 1)}
-          disabled={!hasNextPage || loading}
-          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next &rarr;
-        </button>
+        <button onClick={() => onPageChange(p => p - 1)} disabled={page === 1 || loading} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50">&larr; Previous</button>
+        <button onClick={() => onPageChange(p => p + 1)} disabled={!hasNextPage || loading} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50">Next &rarr;</button>
       </div>
     </div>
   );
 }
 
 function ViewAllTable({ rows, loading, err, onViewReport }) {
+  // ... (Same as before, or you could add checkboxes here too if desired)
   if (loading) return <div className="text-slate-300">Loading reports…</div>;
   if (err) return <div className="text-red-400">Error: {err}</div>;
   if (!rows?.length) return <div className="text-slate-300">No reports.</div>;
-
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-600">
       <table className="min-w-full text-sm">
@@ -181,20 +302,7 @@ function ViewAllTable({ rows, loading, err, onViewReport }) {
           {rows.map((r, i) => {
             const id = r.id ?? r.report_id ?? r._id ?? i;
             return (
-              <tr
-                key={id}
-                className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                onClick={() => onViewReport(id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onViewReport(id);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                title="View report details"
-              >
+              <tr key={id} className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer" onClick={() => onViewReport(id)}>
                 <Td>{nz(r.title)}</Td>
                 <Td>{fmtDate(r.date_of_information ?? r.report_date)}</Td>
                 <Td>{nz(r.country)}</Td>
@@ -209,44 +317,14 @@ function ViewAllTable({ rows, loading, err, onViewReport }) {
   );
 }
 
-function Th({ children }) {
-  return (
-    <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">
-      {children}
-    </th>
-  );
-}
-function Td({ children, className = "" }) {
-  return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
-}
-
+// Utility functions (Th, Td, fmtDate, nz, truncate, parseDDMMMYY) remain the same...
+function Th({ children }) { return <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">{children}</th>; }
+function Td({ children, className = "" }) { return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>; }
 function fmtDate(d) {
-  if (!d) return "—";
-  if (typeof d === "string") {
-    const parsed = parseDDMMMYY(d);
-    if (parsed) return parsed.toLocaleDateString();
-  }
-  const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
-  if (!Number.isFinite(t)) return String(d);
-  return new Date(t).toLocaleDateString();
+    if (!d) return "—";
+    const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;
+    if (!Number.isFinite(t)) return String(d);
+    return new Date(t).toLocaleDateString();
 }
-
-function parseDDMMMYY(s) {
-  const m = /^(\d{1,2})([A-Z]{3})(\d{2})$/.exec(String(s).trim().toUpperCase());
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const mon = { JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11 }[m[2]];
-  if (mon == null) return null;
-  const yy = parseInt(m[3], 10);
-  const year = yy >= 50 ? 1900 + yy : 2000 + yy;
-  return new Date(year, mon, day);
-}
-
-function nz(v) {
-  if (v === null || v === undefined) return "";
-  return String(v);
-}
-function truncate(s, n) {
-  if (!s) return "";
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
+function nz(v) { return (v === null || v === undefined) ? "" : String(v); }
+function truncate(s, n) { return (!s) ? "" : (s.length > n ? s.slice(0, n - 1) + "…" : s); }

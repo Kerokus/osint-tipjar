@@ -1,36 +1,29 @@
 import { useState, useMemo, useEffect } from "react";
 
-export default function ReportSearch({ onViewReport, onSendToIntsum }) {
+export default function ReportSearch({ 
+    onViewReport, 
+    // New Props for Selection
+    selectedMap,
+    onToggleReport,
+    onBatchSelect
+}) {
   
-  // === NEW: Toggle State ===
-  const [searchMode, setSearchMode] = useState("ai"); // "params" | "ai"
+  // === Toggle State ===
+  const [searchMode, setSearchMode] = useState("ai");
   const [aiPrompt, setAiPrompt] = useState("");
-  const [interpretedQuery, setInterpretedQuery] = useState(null); // To show the SQL the AI wrote
+  const [interpretedQuery, setInterpretedQuery] = useState(null);
 
   // State for standard search form inputs
   const [params, setParams] = useState({
-    q: "",
-    country: "",
-    source_platform: "",
-    source_name: "",
-    macom: "",
-    created_from: "",
-    created_to: "",
-    location: "",
-    created_by: "",
-    requirement: "",
+    q: "", country: "", source_platform: "", source_name: "", macom: "",
+    created_from: "", created_to: "", location: "", created_by: "", requirement: "",
   });
 
-  // State for the executed search query. 
-  // We now store the mode inside the active query to know which API to hit.
   const [activeQuery, setActiveQuery] = useState(null);
-
-  // State for API results and loading status
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // State for pagination
   const [page, setPage] = useState(1);
   const [limit] = useState(25);
   const [total, setTotal] = useState(0); 
@@ -39,7 +32,6 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
   const API_KEY = import.meta.env.VITE_API_KEY;
 
   // --- Handlers ---
-
   const handleParamChange = (e) => {
     const { name, value } = e.target;
     const uppercaseFields = ['country', 'macom', 'created_by']
@@ -53,9 +45,7 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
     e.preventDefault();
     setPage(1); 
     setTotal(0);
-    setInterpretedQuery(null); // Clear previous AI SQL
-
-    // Trigger the effect by setting activeQuery based on the current mode
+    setInterpretedQuery(null);
     if (searchMode === "params") {
         setActiveQuery({ mode: "params", ...params });
     } else {
@@ -82,25 +72,18 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
       setResults([]);
       return;
     }
-
     let cancel = false;
     const performSearch = async () => {
       setLoading(true);
       setError(null);
-
       const offset = (page - 1) * limit;
 
       try {
         let res;
-        
-        // === BRANCH 1: Standard Parameter Search (GET) ===
         if (activeQuery.mode === "params") {
             const urlParams = new URLSearchParams();
-            // Exclude internal 'mode' key from URL params
             for (const key in activeQuery) {
-                if (activeQuery[key] && key !== "mode") {
-                urlParams.append(key, activeQuery[key]);
-                }
+                if (activeQuery[key] && key !== "mode") urlParams.append(key, activeQuery[key]);
             }
             urlParams.append("limit", limit);
             urlParams.append("offset", offset);
@@ -109,17 +92,11 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
                 method: "GET",
                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
             });
-        } 
-        // === BRANCH 2: AI Search (POST) ===
-        else {
+        } else {
             res = await fetch(`${BASE}/aisearch`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-                body: JSON.stringify({ 
-                    query: activeQuery.prompt,
-                    limit: limit,
-                    offset: offset // Pass pagination to AI endpoint if supported, otherwise it might just return top N
-                })
+                body: JSON.stringify({ query: activeQuery.prompt, limit: limit, offset: offset })
             });
         }
 
@@ -130,11 +107,7 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
 
         setResults(Array.isArray(data.results) ? data.results : []);
         setTotal(data.total || 0);
-        
-        // If the API returns the generated SQL, save it for display
-        if (data.query_interpreted) {
-            setInterpretedQuery(data.query_interpreted);
-        }
+        if (data.query_interpreted) setInterpretedQuery(data.query_interpreted);
 
       } catch (e) {
         if (!cancel) setError(String(e));
@@ -142,9 +115,7 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
         if (!cancel) setLoading(false);
       }
     };
-
     performSearch();
-
     return () => { cancel = true; };
   }, [activeQuery, page, limit, BASE, API_KEY]);
   
@@ -152,6 +123,22 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
   const startItem = results.length > 0 ? offset + 1 : 0;
   const endItem = offset + results.length;
   const hasNextPage = results.length === limit;
+
+  // --- Checkbox Logic ---
+  const getReportId = (r) => r.id ?? r.report_id ?? r._id;
+  
+  // Are all currently visible results selected?
+  const allVisibleSelected = results.length > 0 && results.every(r => selectedMap.has(getReportId(r)));
+
+  const handleHeaderCheckbox = () => {
+    if (allVisibleSelected) {
+        // Deselect all visible
+        onBatchSelect(results, false);
+    } else {
+        // Select all visible
+        onBatchSelect(results, true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -178,7 +165,6 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
         </div>
 
         <form onSubmit={handleSearch} onReset={handleReset}>
-            
             {/* === MODE 1: STANDARD FORM === */}
             {searchMode === "params" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -206,9 +192,7 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
             {/* === MODE 2: AI INPUT === */}
             {searchMode === "ai" && (
                 <div className="space-y-3 animate-in fade-in zoom-in duration-300">
-                    <label htmlFor="aiPrompt" className="block text-sm font-medium text-slate-300">
-                        Describe the reports you need
-                    </label>
+                    <label htmlFor="aiPrompt" className="block text-sm font-medium text-slate-300">Describe the reports you need</label>
                     <textarea 
                         id="aiPrompt"
                         value={aiPrompt}
@@ -238,17 +222,8 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
                     Reset
                 </button>
                 
-                {/* 2. New Button: Send to Intsum */}
-                {results.length > 0 && (
-                    <button 
-                        type="button" 
-                        onClick={() => onSendToIntsum(results)}
-                        className="px-4 py-2 text-sm bg-green-700 hover:bg-green-600 rounded-md text-white font-semibold transition-colors flex items-center gap-2"
-                        title="Send these search results to the INTSUM Builder"
-                    >
-                        <span>📝</span> Send to INTSUM
-                    </button>
-                )}
+                {/* Note: The "Send to Intsum" button is removed from here. 
+                    It is now accessed via the "View Selected" modal in the parent component. */}
             </div>
         </form>
       </div>
@@ -256,13 +231,10 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
       {/* Results Section */}
       <div className="space-y-4">
         
-        {/* AI Transparency Box: Shows the user the SQL that was generated */}
         {searchMode === "ai" && interpretedQuery && (
             <div className="px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg">
                 <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Generated SQL Query</p>
-                <code className="text-xs text-purple-300 font-mono break-all block">
-                    {interpretedQuery}
-                </code>
+                <code className="text-xs text-purple-300 font-mono break-all block">{interpretedQuery}</code>
             </div>
         )}
 
@@ -278,11 +250,7 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
 
         {loading && (
             <div className="text-slate-300 flex items-center gap-2">
-                {searchMode === 'ai' ? (
-                    <>
-                        <span className="animate-pulse">✨</span> Thinking...
-                    </>
-                ) : "Searching..."}
+                {searchMode === 'ai' ? <><span className="animate-pulse">✨</span> Thinking...</> : "Searching..."}
             </div>
         )}
         
@@ -293,16 +261,80 @@ export default function ReportSearch({ onViewReport, onSendToIntsum }) {
         )}
 
         {results.length > 0 && (
-          <ResultsTable rows={results} onViewReport={onViewReport} />
+          <ResultsTable 
+            rows={results} 
+            onViewReport={onViewReport} 
+            selectedMap={selectedMap}
+            onToggleReport={onToggleReport}
+            allSelected={allVisibleSelected}
+            onToggleAll={handleHeaderCheckbox}
+          />
         )}
       </div>
     </div>
   );
 }
 
+// Updated Sub-components
 
-/* ---------- Sub-components (Unchanged) ---------- */
+function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSelected, onToggleAll }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-600">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-900 text-slate-200">
+          <tr>
+            {/* CHECKBOX HEADER */}
+            <th className="px-4 py-3 border-b border-slate-700 w-10 text-center">
+                <input 
+                    type="checkbox" 
+                    checked={allSelected}
+                    onChange={onToggleAll}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-offset-slate-900"
+                />
+            </th>
+            <Th>Report Title</Th>
+            <Th>Date of Information</Th>
+            <Th>Country</Th>
+            <Th>Location</Th>
+            <Th>Body</Th>
+          </tr>
+        </thead>
+        <tbody className="text-slate-200">
+          {rows.map((r, i) => {
+            const id = r.id ?? r.report_id ?? r._id ?? i;
+            const isSelected = selectedMap.has(id);
+            
+            return (
+              <tr
+                key={id}
+                className={`group cursor-pointer ${isSelected ? "bg-blue-900/30 hover:bg-blue-900/40" : "odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600"}`}
+              >
+                 {/* CHECKBOX CELL */}
+                <td className="px-4 py-3 align-top text-center border-t border-slate-700/50" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                        type="checkbox" 
+                        checked={isSelected}
+                        onChange={() => onToggleReport(r)}
+                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-offset-slate-900 cursor-pointer"
+                    />
+                </td>
 
+                {/* Data Cells (Clicking these opens the view) */}
+                <Td className="group-hover:text-blue-200 transition-colors" onClick={() => onViewReport(id)}>{nz(r.title)}</Td>
+                <Td onClick={() => onViewReport(id)}>{fmtDate(r.date_of_information)}</Td>
+                <Td onClick={() => onViewReport(id)}>{nz(r.country)}</Td>
+                <Td onClick={() => onViewReport(id)}>{nz(r.location)}</Td>
+                <Td className="max-w-[48ch]" onClick={() => onViewReport(id)}>{truncate(nz(r.report_body), 240)}</Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Standard Inputs and Utils remain the same...
 function Input({ label, name, type = "text", value, onChange, placeholder = "" }) {
   return (
     <div>
@@ -321,83 +353,22 @@ function Input({ label, name, type = "text", value, onChange, placeholder = "" }
 }
 
 function PaginationHeader({ start, end, total, page, hasNextPage, onPageChange, loading }) {
-  const showingText = total > 0
-    ? `Showing ${start} - ${end} of ${total}`
-    : `Showing ${start} - ${end}`;
-  
-  if (start === 0 && total === 0) return null;
-
-  return (
-    <div className="flex justify-between items-center text-sm text-slate-400">
-      <span>{showingText}</span>
-      <div className="flex gap-2">
-        <button
-          onClick={() => onPageChange(p => p - 1)}
-          disabled={page === 1 || loading}
-          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          &larr; Previous
-        </button>
-        <button
-          onClick={() => onPageChange(p => p + 1)}
-          disabled={!hasNextPage || loading}
-          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next &rarr;
-        </button>
-      </div>
-    </div>
-  );
+    // ... (existing code)
+    if (start === 0 && total === 0) return null;
+    const showingText = total > 0 ? `Showing ${start} - ${end} of ${total}` : `Showing ${start} - ${end}`;
+    return (
+        <div className="flex justify-between items-center text-sm text-slate-400">
+        <span>{showingText}</span>
+        <div className="flex gap-2">
+            <button onClick={() => onPageChange(p => p - 1)} disabled={page === 1 || loading} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50">&larr; Previous</button>
+            <button onClick={() => onPageChange(p => p + 1)} disabled={!hasNextPage || loading} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-md disabled:opacity-50">Next &rarr;</button>
+        </div>
+        </div>
+    );
 }
 
-function ResultsTable({ rows, onViewReport }) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-slate-600">
-      <table className="min-w-full text-sm">
-        <thead className="bg-slate-900 text-slate-200">
-          <tr>
-            <Th>Report Title</Th>
-            <Th>Date of Information</Th>
-            <Th>Country</Th>
-            <Th>Location</Th>
-            <Th>Body</Th>
-          </tr>
-        </thead>
-        <tbody className="text-slate-200">
-          {rows.map((r, i) => {
-            const id = r.id ?? r.report_id ?? r._id ?? i;
-            return (
-              <tr
-                key={id}
-                className="odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                onClick={() => onViewReport(id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onViewReport(id); }}}
-                role="button"
-                tabIndex={0}
-                title="View report details"
-              >
-                <Td>{nz(r.title)}</Td>
-                <Td>{fmtDate(r.date_of_information)}</Td>
-                <Td>{nz(r.country)}</Td>
-                <Td>{nz(r.location)}</Td>
-                <Td className="max-w-[48ch]">{truncate(nz(r.report_body), 240)}</Td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ---------- Reusable Components & Utils ---------- */
-
-function Th({ children }) {
-  return <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">{children}</th>;
-}
-function Td({ children, className = "" }) {
-  return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
-}
+function Th({ children }) { return <th className="px-4 py-3 text-left font-semibold border-b border-slate-700 select-none">{children}</th>; }
+function Td({ children, className = "", onClick }) { return <td onClick={onClick} className={`px-4 py-3 align-top ${className}`}>{children}</td>; }
 function fmtDate(d) {
   if (!d) return "—";
   const t = typeof d === "string" || typeof d === "number" ? Date.parse(d) : NaN;

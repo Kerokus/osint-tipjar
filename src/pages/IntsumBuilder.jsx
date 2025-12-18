@@ -12,9 +12,20 @@ export default function IntsumBuilder({ initialReports }) {
   const [err, setErr] = useState(null);
   const [generatedRangeLabel, setGeneratedRangeLabel] = useState("");
 
+  // Track if this is an RFI or INTSUM for the main builder
+  const [reportType, setReportType] = useState("INTSUM"); // "INTSUM" | "RFI"
+
   const [summary, setSummary] = useState("");
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryErr, setSummaryErr] = useState(null);
+
+  // --- NEW STATE: Custom Summary Modal ---
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [customOutput, setCustomOutput] = useState("");
+  const [customLoading, setCustomLoading] = useState(false);
+  const [customErr, setCustomErr] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // New State for Captions (Key: reportId, Value: string)
   const [captions, setCaptions] = useState({});
@@ -28,6 +39,7 @@ export default function IntsumBuilder({ initialReports }) {
     if (initialReports && initialReports.length > 0) {
       setReports(initialReports);
       setGeneratedRangeLabel("Imported Search Results");
+      setReportType("RFI"); // Mark as RFI on import
       setErr(null);
       setSummary("");
       setCaptions({});
@@ -81,6 +93,9 @@ export default function IntsumBuilder({ initialReports }) {
     setSummary(""); 
     setCaptions({});
     setGeneratedRangeLabel(label);
+    
+    // Explicitly set to INTSUM when fetching standard ranges
+    setReportType("INTSUM");
 
     try {
       const apiFrom = toApiDate(startObj);
@@ -114,7 +129,7 @@ export default function IntsumBuilder({ initialReports }) {
     }
   };
 
-  // --- Summary Generation ---
+  // --- Main Summary Generation ---
   const handleGenerateSummary = async () => {
     if (reports.length === 0) return;
     setGeneratingSummary(true);
@@ -122,11 +137,17 @@ export default function IntsumBuilder({ initialReports }) {
 
     try {
       const reportBodies = reports.map(r => r.report_body);
+      
       const res = await fetch(`${API_URL}/intsum`, {
         method: "POST",
         headers: { "x-api-key": API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ reports: reportBodies })
+        // Pass the reportType (RFI or INTSUM) to the backend
+        body: JSON.stringify({ 
+            reports: reportBodies,
+            report_type: reportType 
+        })
       });
+      
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.summary) setSummary(data.summary);
@@ -136,6 +157,65 @@ export default function IntsumBuilder({ initialReports }) {
     } finally {
       setGeneratingSummary(false);
     }
+  };
+
+  // --- NEW: Custom Summary Handler ---
+  const handleCustomGenerate = async () => {
+    if (!customInput.trim()) return;
+    setCustomLoading(true);
+    setCustomErr(null);
+    setCustomOutput("");
+    setCopySuccess(false);
+
+    try {
+      // Treat the custom input as a single report body, and force type to RFI
+      const res = await fetch(`${API_URL}/intsum`, {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            reports: [customInput],
+            report_type: "RFI"
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.summary) setCustomOutput(data.summary);
+      else throw new Error("No summary returned");
+
+    } catch (e) {
+        setCustomErr(String(e));
+    } finally {
+        setCustomLoading(false);
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+        await navigator.clipboard.writeText(customOutput);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+        console.error('Failed to copy', err);
+    }
+  };
+
+  const handleCustomReset = () => {
+    setCustomInput("");
+    setCustomOutput("");
+    setCustomErr(null);
+    setCopySuccess(false);
+  };
+
+  // --- Clear Current Report ---
+  const handleClearReport = () => {
+    setReports([]);
+    setSummary("");
+    setCaptions({});
+    setGeneratedRangeLabel("");
+    setErr(null);
+    setSummaryErr(null);
+    setReportType("INTSUM"); // Reset to default
   };
 
   // --- Download Handler ---
@@ -180,7 +260,7 @@ export default function IntsumBuilder({ initialReports }) {
   const displayList = useMemo(() => {
     if (reports.length === 0) return [];
     
-    // === NEW LOGIC: Single Group for Imports ===
+    // === Logic: Single Group for Imports ===
     if (generatedRangeLabel === "Imported Search Results") {
         return [
             { type: "HEADER", title: "RFI Results" },
@@ -188,7 +268,7 @@ export default function IntsumBuilder({ initialReports }) {
         ];
     }
 
-    // === ORIGINAL LOGIC: Regional Grouping ===
+    // === Logic: Regional Grouping ===
     const groups = {};
     SECTION_ORDER.forEach(sec => groups[sec] = []);
     reports.forEach(r => {
@@ -236,12 +316,14 @@ export default function IntsumBuilder({ initialReports }) {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20">
+    <div className="space-y-6 max-w-5xl mx-auto pb-20 relative">
       
       {/* --- Controls --- */}
       <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 space-y-4">
         <div className="flex justify-between items-start">
-            <h2 className="text-lg font-bold text-slate-100">INTSUM Builder</h2>
+            <h2 className="text-lg font-bold text-slate-100">
+                {reportType === "RFI" ? "RFI Builder" : "INTSUM Builder"}
+            </h2>
             <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-2">
                     <button
@@ -260,6 +342,15 @@ export default function IntsumBuilder({ initialReports }) {
                         {generatingSummary ? "Generating..." : "Generate Summary"}
                     </button>
                 </div>
+                
+                {/* NEW: Custom Summary Button */}
+                <button
+                    onClick={() => setShowCustomModal(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                    Create Custom Summary
+                </button>
+
                 {summaryErr && <span className="text-xs text-red-400 mt-1">{summaryErr}</span>}
             </div>
         </div>
@@ -289,7 +380,7 @@ export default function IntsumBuilder({ initialReports }) {
 
       {/* --- Document Output --- */}
       {reports.length > 0 && (
-        <div className="bg-white text-black p-8 rounded shadow-xl font-['Arial'] text-[12pt] max-w-[21cm] mx-auto min-h-[29.7cm]">
+        <div className="bg-white text-black p-8 rounded shadow-xl font-['Arial'] text-[12pt] max-w-[21cm] mx-auto min-h-[29.7cm] flex flex-col">
           
           <div className="mb-6 border-b-2 border-black pb-4">
              <h1 className="text-xl font-bold text-center underline uppercase mb-2">513th OSINT Daily Reporting Roll-Up</h1>
@@ -317,7 +408,7 @@ export default function IntsumBuilder({ initialReports }) {
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-4 flex-grow">
             {displayList.map((item, i) => {
               if (item.type === "HEADER") {
                   return <div key={`h-${i}`} className="pt-2"><h3 className="text-center font-bold underline uppercase text-sm">{item.title}</h3></div>;
@@ -354,6 +445,77 @@ export default function IntsumBuilder({ initialReports }) {
                 })}
             </ol>
           </div>
+          
+          {/* Clear Button */}
+          <div className="mt-8 pt-6 border-t border-gray-300 text-center print:hidden">
+            <button 
+                onClick={handleClearReport}
+                className="text-red-600 hover:text-red-800 text-sm font-semibold hover:underline"
+            >
+                Clear current report
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* --- NEW: Custom Summary Modal --- */}
+      {showCustomModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-full max-w-4xl h-[70vh] flex flex-col">
+                <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">Create Custom Summary</h3>
+                    <button onClick={() => setShowCustomModal(false)} className="text-slate-400 hover:text-white text-xl">&times;</button>
+                </div>
+                
+                <div className="flex-1 grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-700 min-h-0">
+                    {/* Left: Input */}
+                    <div className="p-4 flex flex-col gap-4">
+                        <label className="text-sm font-medium text-slate-300">Raw Text / Notes (RFI)</label>
+                        <textarea
+                            className="flex-1 w-full bg-slate-900 border border-slate-600 rounded-md p-3 text-sm text-slate-100 placeholder-slate-500 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            placeholder="Paste your notes or raw text here..."
+                            value={customInput}
+                            onChange={(e) => setCustomInput(e.target.value)}
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCustomGenerate}
+                                disabled={customLoading || !customInput.trim()}
+                                className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {customLoading ? "Generating..." : "Generate Summary"}
+                            </button>
+                            <button
+                                onClick={handleCustomReset}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                        {customErr && <div className="text-red-400 text-xs mt-1">{customErr}</div>}
+                    </div>
+
+                    {/* Right: Output */}
+                    <div className="p-4 flex flex-col gap-4 bg-slate-900/50">
+                        <label className="text-sm font-medium text-slate-300">Generated Summary</label>
+                        <div className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-md p-3 text-sm text-slate-300 overflow-y-auto whitespace-pre-wrap">
+                            {customOutput || <span className="text-slate-600 italic">Summary will appear here...</span>}
+                        </div>
+                        <button
+                            onClick={handleCopyToClipboard}
+                            disabled={!customOutput}
+                            className={`w-full py-2 rounded font-medium transition-colors ${
+                                copySuccess 
+                                ? "bg-green-600 text-white" 
+                                : "bg-slate-700 hover:bg-slate-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            }`}
+                        >
+                            {copySuccess ? "Copied!" : "Copy to Clipboard"}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
       )}
     </div>
