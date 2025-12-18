@@ -1,5 +1,12 @@
 # website.url/aisearch
 
+"""
+There are three layers of security for the AI search:
+1. The prompt specifies to only return a 'SELECT' statement.
+2. Before the SQL query is executed, Lambda will check to see if the command is a 'SELECT' statement
+3. This lambda function is logging into the Postgres database with an account that is restricted to read-only acccess of a single table.
+"""
+
 import boto3
 import json
 import os
