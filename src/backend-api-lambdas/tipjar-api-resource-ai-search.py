@@ -15,18 +15,19 @@ MODEL_ID = os.environ.get("MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0
 
 bedrock_client = boto3.client("bedrock-runtime", region_name=REGION)
 
-# --- 1. Manual DB Connection (Replaces common.db) ---
 def get_db_connection():
     """
-    Establishes a connection specifically for the AI Search user.
-    Uses DB_USER and DB_USER_PASSWORD for the read-only credentials.
+    I'm not using the commmon.db util here because I made a separate user account 
+    specifically for this search within the postgres database that is restricted to 
+    read-only access to a single table. This is to stop users from being able to 
+    prompt-inject commands that could damage the database.
     """
     try:
         conn = psycopg2.connect(
             host=os.environ['DB_ENDPOINT'],
             dbname=os.environ['DB_NAME'],
-            user=os.environ['DB_USER'],          # Specific read-only user
-            password=os.environ['DB_USER_PASSWORD'], # Specific read-only password
+            user=os.environ['DB_USER'],          
+            password=os.environ['DB_USER_PASSWORD'], 
             port=os.environ.get('DB_PORT', 5432)
         )
         return conn
@@ -171,7 +172,7 @@ def execute_generated_sql(cur, sql_query):
     """
     Executes the AI-generated SQL.
     """
-    # Security Sanity Check
+    # Security Layer 2: We check the command
     if not sql_query.upper().startswith("SELECT"):
         raise ValueError("AI generated a non-SELECT query. Execution blocked for safety.")
 
