@@ -1,4 +1,7 @@
+// src/pages/ReportSearch.jsx
+
 import { useState, useMemo, useEffect } from "react";
+import { usePlatforms } from "../components/hooks/usePlatforms.js";
 
 export default function ReportSearch({ 
     onViewReport, 
@@ -30,6 +33,9 @@ export default function ReportSearch({
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
 
+  // Use the dynamic hook for platform options
+  const { platformOptions, loading: platformsLoading } = usePlatforms();
+
   // --- Handlers ---
   const handleParamChange = (e) => {
     const { name, value } = e.target;
@@ -37,8 +43,6 @@ export default function ReportSearch({
     const finalValue = uppercaseFields.includes(name) ? value.toUpperCase() : value;
     setParams((prev) => ({ ...prev, [name]: finalValue }));
   };
-
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -123,18 +127,13 @@ export default function ReportSearch({
   const endItem = offset + results.length;
   const hasNextPage = results.length === limit;
 
-  // Logic for the checkboxes
   const getReportId = (r) => r.id ?? r.report_id ?? r._id;
-  
-  // Are all currently visible results selected?
   const allVisibleSelected = results.length > 0 && results.every(r => selectedMap.has(getReportId(r)));
 
   const handleHeaderCheckbox = () => {
     if (allVisibleSelected) {
-        // Deselect all visible
         onBatchSelect(results, false);
     } else {
-        // Select all visible
         onBatchSelect(results, true);
     }
   };
@@ -172,11 +171,18 @@ export default function ReportSearch({
                 <Input label="Created By" name="created_by" value={params.created_by} onChange={handleParamChange} placeholder="A0000" />
                 <div>
                     <label htmlFor="source_platform" className="block text-sm font-medium text-slate-300 mb-1">Source Platform</label>
-                    <select id="source_platform" name="source_platform" value={params.source_platform} onChange={handleParamChange} className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Select a Platform</option>
-                    {platformOptions.map(platform => (
-                        <option key={platform} value={platform}>{platform}</option>
-                    ))}
+                    <select 
+                      id="source_platform" 
+                      name="source_platform" 
+                      value={params.source_platform} 
+                      onChange={handleParamChange} 
+                      disabled={platformsLoading}
+                      className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">{platformsLoading ? "Loading..." : "Select a Platform"}</option>
+                      {platformOptions.map(platform => (
+                          <option key={platform} value={platform}>{platform}</option>
+                      ))}
                     </select>
                 </div>
                 <Input label="MACOM" name="macom" value={params.macom} onChange={handleParamChange} placeholder="CENTCOM" />
@@ -220,8 +226,6 @@ export default function ReportSearch({
                 <button type="reset" className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200">
                     Reset
                 </button>
-                
-                
             </div>
         </form>
       </div>
@@ -281,7 +285,6 @@ function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSele
       <table className="min-w-full text-sm">
         <thead className="bg-slate-900 text-slate-200">
           <tr>
-            {/* CHECKBOX HEADER */}
             <th className="px-4 py-3 border-b border-slate-700 w-10 text-center">
                 <input 
                     type="checkbox" 
@@ -307,7 +310,6 @@ function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSele
                 key={id}
                 className={`group cursor-pointer ${isSelected ? "bg-blue-900/30 hover:bg-blue-900/40" : "odd:bg-slate-800 even:bg-slate-700 hover:bg-slate-600"}`}
               >
-                 {/* CHECKBOX CELL */}
                 <td className="px-4 py-3 align-top text-center border-t border-slate-700/50" onClick={(e) => e.stopPropagation()}>
                     <input 
                         type="checkbox" 
@@ -316,8 +318,6 @@ function ResultsTable({ rows, onViewReport, selectedMap, onToggleReport, allSele
                         className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-offset-slate-900 cursor-pointer"
                     />
                 </td>
-
-                {/* Data Cells (Clicking these opens the view) */}
                 <Td className="group-hover:text-blue-200 transition-colors" onClick={() => onViewReport(id)}>{nz(r.title)}</Td>
                 <Td onClick={() => onViewReport(id)}>{fmtDate(r.date_of_information)}</Td>
                 <Td onClick={() => onViewReport(id)}>{nz(r.country)}</Td>

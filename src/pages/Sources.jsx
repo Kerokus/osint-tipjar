@@ -1,4 +1,7 @@
+// src/pages/Sources.jsx
+
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { usePlatforms } from "../components/hooks/usePlatforms.js";
 
 export default function Sources() {
   
@@ -33,6 +36,9 @@ export default function Sources() {
   const BASE = useMemo(() => (import.meta.env.VITE_API_URL || "").replace(/\/+$/, ""), []);
   const API_KEY = import.meta.env.VITE_API_KEY;
 
+  // Use the dynamic hook for platform options
+  const { platformOptions, loading: platformsLoading } = usePlatforms();
+
   // Check admin status on component mount
   useEffect(() => {
     const adminStatus = localStorage.getItem("is_admin") === "true";
@@ -45,8 +51,6 @@ export default function Sources() {
     const { name, value } = e.target;
     setParams((prev) => ({ ...prev, [name]: value }));
   };
-
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitta User"];
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -133,9 +137,10 @@ export default function Sources() {
               name="source_platform"
               value={params.source_platform}
               onChange={handleParamChange}
-              className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500"
+              disabled={platformsLoading}
+              className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
             >
-              <option value="">Any Platform</option>
+              <option value="">{platformsLoading ? "Loading..." : "Select Platform"}</option>
               {platformOptions.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
@@ -181,6 +186,8 @@ export default function Sources() {
           }}
           base={BASE}
           apiKey={API_KEY}
+          platformOptions={platformOptions}
+          platformsLoading={platformsLoading}
         />
       )}
       
@@ -194,6 +201,8 @@ export default function Sources() {
           }}
           base={BASE}
           apiKey={API_KEY}
+          platformOptions={platformOptions}
+          platformsLoading={platformsLoading}
         />
       )}
     </div>
@@ -203,8 +212,7 @@ export default function Sources() {
 
 /* ---------- Sub-components ---------- */
 
-// Component for the "Add Source" modal
-function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
+function AddSourceModal({ onClose, onAddSuccess, base, apiKey, platformOptions, platformsLoading }) {
   const [newSource, setNewSource] = useState({
     source_name: "",
     source_platform: "",
@@ -213,8 +221,6 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState("");
   const [isConfirmed, setIsConfirmed] = useState(false);
-
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -279,8 +285,14 @@ function AddSourceModal({ onClose, onAddSuccess, base, apiKey }) {
           
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1">Platform</label>
-            <select name="source_platform" value={newSource.source_platform} onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">Select a Platform</option>
+            <select 
+              name="source_platform" 
+              value={newSource.source_platform} 
+              onChange={handleChange} 
+              disabled={platformsLoading}
+              className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            >
+              <option value="">{platformsLoading ? "Loading platforms..." : "Select a Platform"}</option>
               {platformOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -357,7 +369,7 @@ function SourceList({ rows, onViewSource }) {
   );
 }
 
-function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) {
+function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey, platformOptions, platformsLoading }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editableSource, setEditableSource] = useState({
     source_name: source.source_name,
@@ -368,8 +380,6 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
   const [modalError, setModalError] = useState("");
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  const platformOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -473,15 +483,24 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
             
             <div className="space-y-3">
                 <EditableField label="Source Name" name="source_name" isEditing={isEditing} value={editableSource.source_name} onChange={handleEditChange} />
-                <EditableField as="select" label="Platform" name="source_platform" isEditing={isEditing} value={editableSource.source_platform} onChange={handleEditChange} options={platformOptions} />
+                <EditableField 
+                    as="select" 
+                    label="Platform" 
+                    name="source_platform" 
+                    isEditing={isEditing} 
+                    value={editableSource.source_platform} 
+                    onChange={handleEditChange} 
+                    options={platformOptions} 
+                    loading={platformsLoading}
+                />
                 <EditableField as="textarea" label="Description" name="source_description" isEditing={isEditing} value={editableSource.source_description} onChange={handleEditChange} />
             </div>
 
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 pt-4 border-t border-slate-700">
               <MetadataField label="Added By" value={nz(source.added_by)} />
               <MetadataField label="Added On" value={fmtDate(source.added_on)} />
-              <MetadataField label="Modified By" value={nz(source.modified_by)} />
-              <MetadataField label="Modified On" value={fmtDate(source.modified_on)} />
+              <MetadataField label="Metadata Modified By" value={nz(source.modified_by)} />
+              <MetadataField label="Metadata Modified On" value={fmtDate(source.modified_on)} />
             </div>
         </div>
 
@@ -541,7 +560,7 @@ function SourceModal({ source, onClose, isAdmin, onSaveSuccess, base, apiKey }) 
   );
 }
 
-function EditableField({ label, name, isEditing, value, onChange, as = 'input', options = [] }) {
+function EditableField({ label, name, isEditing, value, onChange, as = 'input', options = [], loading = false }) {
   return (
     <div>
       <label className="block text-sm font-medium text-slate-400 mb-1">{label}</label>
@@ -549,8 +568,14 @@ function EditableField({ label, name, isEditing, value, onChange, as = 'input', 
         as === 'textarea' ? (
           <textarea name={name} value={value} onChange={onChange} rows="4" className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500" />
         ) : as === 'select' ? (
-          <select name={name} value={value} onChange={onChange} className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">Select a Platform</option>
+          <select 
+            name={name} 
+            value={value} 
+            onChange={onChange} 
+            disabled={loading}
+            className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+          >
+            <option value="">{loading ? "Loading..." : "Select a Platform"}</option>
             {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         ) : (

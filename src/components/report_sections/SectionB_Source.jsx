@@ -5,7 +5,7 @@ import TimeZoneTool from "../../components/TimeZoneTool.jsx";
 import TranslationTool from "../../components/TranslationTool.jsx";
 import OcrTool from "../../components/OcrTool.jsx";
 import AddRequirements from "../../components/AddRequirements.jsx";
-
+import { usePlatforms } from "../hooks/usePlatforms.js"; 
 
 export default function SectionB_Source({
   usper, setUsper,
@@ -21,11 +21,14 @@ export default function SectionB_Source({
 }) {
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
 
+  // Import social media platforms
+  const { platformOptions, loading } = usePlatforms();
+
   useEffect(() => {
     if (usper) setUspi(true);
   }, [usper, setUspi]);
 
-  //Sanitize http and https URLs
+  // Sanitize http and https URLs
   const handleUidChange = (e) => {
     const sanitizedValue = e.target.value.replace(/http/gi, "hxxp");
     setUid(sanitizedValue);
@@ -35,7 +38,7 @@ export default function SectionB_Source({
     setRequirements(prev => prev.filter(r => r !== reqId));
   };
 
-  const sourceOptions = ["Website", "X User", "Telegram User", "BlueSky User", "Facebook User", "Instagram User", "YouTube User", "Tiktok User", "VK User", "MySpace User", "Aparat User", "Eitaa User"];
+  
   const didWhatOptions = ["reported", "posted", "stated", "claimed", "published", "observed"];
 
   // right-pane tabs
@@ -47,16 +50,13 @@ export default function SectionB_Source({
     { key: "ocr", label: "Extract Image Text", node: <OcrTool /> },
   ];
 
-  // height = depth of 4 rows + requirements row
   const formRef = useRef(null);
   const toolH = useRef(280); 
   useLayoutEffect(() => {
     if (!formRef.current) return;
     const rows = formRef.current.querySelectorAll(".form-row");
     if (!rows.length) return;
-    const rowH = rows[0].getBoundingClientRect().height;
-    // Calculate total height based on current rows
-    const totalH = Array.from(rows).reduce((acc, row) => acc + row.getBoundingClientRect().height + 8, 0); // +8 for gap
+    const totalH = Array.from(rows).reduce((acc, row) => acc + row.getBoundingClientRect().height + 8, 0); 
     toolH.current = Math.max(160, Math.round(totalH));
   });
 
@@ -99,8 +99,18 @@ export default function SectionB_Source({
               </div>
               <div className="col-span-12 md:col-span-4">
                 <label className="block text-xs">Source Type</label>
-                <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="w-full h-9 rounded-md bg-slate-900 border border-slate-700">
-                  {sourceOptions.map(o => <option key={o}>{o}</option>)}
+                <select 
+                  value={sourceType} 
+                  onChange={(e) => setSourceType(e.target.value)} 
+                  className="w-full h-9 rounded-md bg-slate-900 border border-slate-700"
+                  disabled={loading}
+                >
+                  {/* Use platformOptions from the imported hook */}
+                  {loading ? (
+                    <option>Loading...</option>
+                  ) : (
+                    platformOptions.map(o => <option key={o} value={o}>{o}</option>)
+                  )}
                 </select>
               </div>
               <div className="col-span-12 md:col-span-5">
