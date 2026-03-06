@@ -30,9 +30,6 @@ export default function IntsumBuilder({ initialReports }) {
   // State for Captions (Key: reportId, Value: string)
   const [captions, setCaptions] = useState({});
 
-  // --- NEW: Countries TIPPed State & Effect ---
-  const [countryMap, setCountryMap] = useState(new Map());
-
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
   const IMG_API_KEY = import.meta.env.VITE_IMAGE_UPLOAD_API_KEY;
@@ -48,25 +45,6 @@ export default function IntsumBuilder({ initialReports }) {
       setCaptions({});
     }
   }, [initialReports]);
-
-  // Fetch country list for the Countries TIPPed section
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}country_locations/country_list_with_codes.json`)
-      .then((r) => r.json())
-      .then((data) => {
-        const map = new Map();
-        // The JSON groups countries by MACOM (e.g., data["CENTCOM"])
-        Object.values(data).forEach((macomList) => {
-          macomList.forEach((c) => {
-            if (c.name && c.code) {
-              map.set(c.name.toUpperCase().trim(), c.code.toUpperCase().trim());
-            }
-          });
-        });
-        setCountryMap(map);
-      })
-      .catch((err) => console.error("Failed to load country list", err));
-  }, []);
 
   // Configuration: Category Definitions
   // This breaks the INTSUM out into separate categories by region
@@ -241,7 +219,7 @@ export default function IntsumBuilder({ initialReports }) {
     setReportType("INTSUM"); 
   };
 
-  // Download Handler for Docx
+  // Download Handler
   const handleDownloadDocx = () => {
     generateDocx({
       reports,
@@ -255,57 +233,6 @@ export default function IntsumBuilder({ initialReports }) {
       apiKey: API_KEY,
       imageApiKey: IMG_API_KEY
     });
-  };
-
-  // --- NEW: Download Handler for CSV ---
-  const handleDownloadCSV = () => {
-    if (reports.length === 0) return;
-
-    const headers = [
-      "Title", 
-      "Datetime Group", 
-      "Source Type", 
-      "Source Name", 
-      "Source Action", 
-      "Report Body", 
-      "Additional Comment"
-    ];
-
-    // Helper to safely format strings for CSV cells
-    const escapeCSV = (str) => {
-      if (str == null) return '""';
-      const s = String(str);
-      return `"${s.replace(/"/g, '""')}"`; // Escape double quotes
-    };
-
-    const rows = reports.map((r) => {
-      const dtgDate = parseDtgFromTitle(r.title);
-      const dtgStr = dtgDate ? makeDTGString(dtgDate) : "UNKNOWN";
-      
-      return [
-        r.title,
-        dtgStr,
-        r.source_platform,
-        r.source_name,
-        r.did_what,
-        r.report_body,
-        r.additional_comment_text
-      ].map(escapeCSV).join(",");
-    });
-
-    const csvContent = [headers.map(escapeCSV).join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.href = url;
-    const safeLabel = generatedRangeLabel ? generatedRangeLabel.replace(/[^a-z0-9]/gi, '_') : 'Export';
-    link.setAttribute("download", `INTSUM_RAW_${safeLabel}.csv`);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   // Standard Ranges
@@ -383,20 +310,6 @@ export default function IntsumBuilder({ initialReports }) {
     return Array.from(set).join("; ");
   }, [reports]);
 
-  // --- NEW: Countries TIPPed Calculation ---
-  const uniqueCountriesTipped = useMemo(() => {
-    if (reports.length === 0 || countryMap.size === 0) return "";
-    const set = new Set();
-    reports.forEach((r) => {
-      const cName = (r.country || "").toUpperCase().trim();
-      if (cName) {
-        const code = countryMap.get(cName);
-        if (code) set.add(code);
-      }
-    });
-    return Array.from(set).sort().join("; ");
-  }, [reports, countryMap]);
-
   const hasUsper = useMemo(() => reports.some(r => r.is_usper || r.has_uspi), [reports]);
 
   // Caption Update Helper
@@ -422,15 +335,6 @@ export default function IntsumBuilder({ initialReports }) {
                     >
                         Download .docx
                     </button>
-                    
-                    {/* NEW: Download CSV Button */}
-                    <button
-                        onClick={handleDownloadCSV}
-                        disabled={reports.length === 0}
-                        className="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        Download raw CSV
-                    </button>
 
                     <button
                         onClick={handleGenerateSummary}
@@ -441,7 +345,7 @@ export default function IntsumBuilder({ initialReports }) {
                     </button>
                 </div>
                 
-                {/* Custom Summary Button */}
+                {/* NEW: Custom Summary Button */}
                 <button
                     onClick={() => setShowCustomModal(true)}
                     className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
@@ -489,14 +393,6 @@ export default function IntsumBuilder({ initialReports }) {
             <div className="mb-6 text-sm">
                 <span className="font-bold">(CUI//REL TO USA, FVEY) REQUIREMENT NUMBER(S): </span>
                 <span>{uniqueRequirements}</span>
-            </div>
-          )}
-
-          {/* NEW: Countries TIPPed rendering */}
-          {uniqueCountriesTipped && (
-            <div className="mb-6 text-sm">
-                <span className="font-bold">(CUI//REL TO USA, FVEY) COUNTRIES TIPPED: </span>
-                <span>{uniqueCountriesTipped}</span>
             </div>
           )}
 
@@ -565,7 +461,7 @@ export default function IntsumBuilder({ initialReports }) {
         </div>
       )}
 
-      {/* --- Custom Summary Modal --- */}
+      {/* --- NEW: Custom Summary Modal --- */}
       {showCustomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-full max-w-4xl h-[70vh] flex flex-col">
