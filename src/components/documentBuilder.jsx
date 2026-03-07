@@ -131,6 +131,8 @@ export const generateDocx = async ({
   }
 
   // 5. Reporting Loop
+  const seenCollectorComments = new Set();
+
   for (const item of displayList) {
     if (item.type === "HEADER") {
       docChildren.push(
@@ -171,17 +173,26 @@ export const generateDocx = async ({
         })
       );
 
-      // 5b. Collector Comment
-      docChildren.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: `(${collClassif}) COLLECTOR COMMENT: `, bold: true, font: "Arial", size: 24 }),
-            new TextRun({ text: `${r.source_description} ${r.additional_comment_text}`, font: "Arial", size: 24 }),
-          ],
-          spacing: { after: 200 },
-          alignment: AlignmentType.JUSTIFIED,
-        })
-      );
+      // 5b. Collector Comment (with duplicate check)
+      const rawCommentText = `${r.source_description || ""} ${r.additional_comment_text || ""}`.trim();
+      
+      if (rawCommentText && !seenCollectorComments.has(rawCommentText)) {
+        docChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `(${collClassif}) COLLECTOR COMMENT: `, bold: true, font: "Arial", size: 24 }),
+              new TextRun({ text: `${r.source_description || ""} ${r.additional_comment_text || ""}`, font: "Arial", size: 24 }),
+            ],
+            spacing: { after: 200 },
+            alignment: AlignmentType.JUSTIFIED,
+          })
+        );
+        // Add this specific comment to our tracking set so it isn't printed again
+        seenCollectorComments.add(rawCommentText);
+      } else if (!rawCommentText) {
+         // Fallback spacer if there is no comment text at all
+         docChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+      }
 
       // 5c. Image Handling
       if (r.image_url) {

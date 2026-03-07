@@ -4,6 +4,7 @@ import WordList from "./WordList";
 import CreateUser from "./CreateUser";
 import Requirements from "./Requirements";
 import Platforms from "./Platforms";
+import IntsumSections from "./IntsumSections"
 
 
 export default function Admin() {
@@ -14,7 +15,8 @@ export default function Admin() {
     { key: "add", label: "Add New User", component: <CreateUser /> },
     { key: "words", label: "Buzz Words", component: <WordList /> },
     { key: "requirements", label: "Collection Requirements", component: <Requirements /> },
-    { key: "platforms", label: "Social Media Platforms", component: <Platforms /> }
+    { key: "platforms", label: "Social Media Platforms", component: <Platforms /> },
+    { key: "intsumsections", label: "INTSUM Report Sections", component: <IntsumSections /> }
   ];
 
   return (

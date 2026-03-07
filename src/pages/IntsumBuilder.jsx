@@ -30,8 +30,12 @@ export default function IntsumBuilder({ initialReports }) {
   // State for Captions (Key: reportId, Value: string)
   const [captions, setCaptions] = useState({});
 
-  // --- NEW: Countries TIPPed State & Effect ---
+  // Countries TIPPed State & Effect
   const [countryMap, setCountryMap] = useState(new Map());
+
+  // --- NEW: Dynamic Sections State ---
+  const [categoryDefinitions, setCategoryDefinitions] = useState({});
+  const [sectionOrder, setSectionOrder] = useState(["Additional Reporting"]);
 
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   const API_KEY = import.meta.env.VITE_API_KEY;
@@ -68,23 +72,49 @@ export default function IntsumBuilder({ initialReports }) {
       .catch((err) => console.error("Failed to load country list", err));
   }, []);
 
-  // Configuration: Category Definitions
-  // This breaks the INTSUM out into separate categories by region
-  const CATEGORY_DEFINITIONS = {
-    "Israel-Hamas Ceasefire": ["ISRAEL", "GAZA", "GAZA STRIP", "WEST BANK", "PALESTINE", "PALESTINIAN TERRITORY", "ISR", "PSE", "XGZ", "XWB"],
-    "Levant": ["LEBANON", "SYRIA", "JORDAN", "TURKEY", "CYPRUS", "LBN", "SYR", "JOR", "TUR", "CYP"],
-    "Iranian Threat Network": ["IRAN", "IRN"],
-    "Iraq": ["IRAQ", "IRQ"],
-    "Arabian Peninsula": ["YEMEN", "SAUDI ARABIA", "QATAR", "UAE", "KUWAIT", "OMAN", "BAHRAIN", "UNITED ARAB EMIRATES", "YEM", "SAU", "QAT", "ARE", "KWT", "OMN", "BHR"],
-    "Pakistan": ["PAKISTAN", "PAK"]
-  };
+  // --- NEW: Fetch Dynamic INTSUM Sections ---
+  useEffect(() => {
+    let cancel = false;
+    const fetchSections = async () => {
+      try {
+        const res = await fetch(`${API_URL}/intsum_sections`, {
+          method: "GET",
+          headers: { 
+            "Content-Type": "application/json", 
+            "x-api-key": API_KEY 
+          }
+        });
+        if (!res.ok) throw new Error("Failed to load custom sections.");
+        const data = await res.json();
+        
+        if (cancel) return;
 
-  const SECTION_ORDER = ["Israel-Hamas Ceasefire", "Levant", "Iranian Threat Network", "Iraq", "Arabian Peninsula", "Pakistan", "Additional Reporting"];
+        const defs = {};
+        const order = [];
+        
+        // Ensure data is sorted by sort_order just in case the backend missed it
+        const sortedData = Array.isArray(data) ? data.sort((a, b) => a.sort_order - b.sort_order) : [];
+        
+        sortedData.forEach(sec => {
+          defs[sec.name] = sec.countries || [];
+          order.push(sec.name);
+        });
 
-  // Categorize Report
+        setCategoryDefinitions(defs);
+        // Always append "Additional Reporting" to catch unmapped countries
+        setSectionOrder([...order, "Additional Reporting"]);
+      } catch (err) {
+        console.error("Failed to fetch INTSUM sections, falling back to defaults.", err);
+      }
+    };
+    fetchSections();
+    return () => { cancel = true; };
+  }, [API_URL, API_KEY]);
+
+  // Categorize Report using dynamic state
   const getCategory = (r) => {
     const country = (r.country || "").toUpperCase().trim();
-    for (const [section, keywords] of Object.entries(CATEGORY_DEFINITIONS)) {
+    for (const [section, keywords] of Object.entries(categoryDefinitions)) {
         if (keywords.includes(country)) return section;
         if (keywords.some(k => country.includes(k))) return section;
     }
@@ -257,7 +287,7 @@ export default function IntsumBuilder({ initialReports }) {
     });
   };
 
-  // --- NEW: Download Handler for CSV ---
+  // Download Handler for CSV
   const handleDownloadCSV = () => {
     if (reports.length === 0) return;
 
@@ -345,21 +375,29 @@ export default function IntsumBuilder({ initialReports }) {
 
     // Regional Grouping
     const groups = {};
-    SECTION_ORDER.forEach(sec => groups[sec] = []);
+    // Initialize groups based on the dynamic sectionOrder
+    sectionOrder.forEach(sec => groups[sec] = []);
+    
     reports.forEach(r => {
         const cat = getCategory(r);
-        if (groups[cat]) groups[cat].push(r);
-        else groups["Additional Reporting"].push(r);
+        if (groups[cat]) {
+            groups[cat].push(r);
+        } else if (groups["Additional Reporting"]) {
+            groups["Additional Reporting"].push(r);
+        }
     });
 
     const flatList = [];
-    SECTION_ORDER.forEach(sec => {
+    sectionOrder.forEach(sec => {
         flatList.push({ type: "HEADER", title: sec });
-        if (groups[sec].length > 0) groups[sec].forEach(r => flatList.push({ type: "REPORT", data: r }));
-        else flatList.push({ type: "NSTR" });
+        if (groups[sec] && groups[sec].length > 0) {
+            groups[sec].forEach(r => flatList.push({ type: "REPORT", data: r }));
+        } else {
+            flatList.push({ type: "NSTR" });
+        }
     });
     return flatList;
-  }, [reports, generatedRangeLabel]);
+  }, [reports, generatedRangeLabel, categoryDefinitions, sectionOrder]);
 
   const reportCitationMap = useMemo(() => {
       const map = new Map();
@@ -383,7 +421,7 @@ export default function IntsumBuilder({ initialReports }) {
     return Array.from(set).join("; ");
   }, [reports]);
 
-  // --- NEW: Countries TIPPed Calculation ---
+  // Countries TIPPed Calculation
   const uniqueCountriesTipped = useMemo(() => {
     if (reports.length === 0 || countryMap.size === 0) return "";
     const set = new Set();
@@ -423,7 +461,6 @@ export default function IntsumBuilder({ initialReports }) {
                         Download .docx
                     </button>
                     
-                    {/* NEW: Download CSV Button */}
                     <button
                         onClick={handleDownloadCSV}
                         disabled={reports.length === 0}
@@ -492,7 +529,7 @@ export default function IntsumBuilder({ initialReports }) {
             </div>
           )}
 
-          {/* NEW: Countries TIPPed rendering */}
+          {/* Countries TIPPed rendering */}
           {uniqueCountriesTipped && (
             <div className="mb-6 text-sm">
                 <span className="font-bold">(CUI//REL TO USA, FVEY) COUNTRIES TIPPED: </span>
